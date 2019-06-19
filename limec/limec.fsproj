@@ -9,6 +9,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Controller.fs" />
+    <Compile Include="Preprocessor.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

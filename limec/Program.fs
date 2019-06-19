@@ -7,5 +7,7 @@ open Types
 [<EntryPoint>]
 let main argv =
     let controls = Controller.Control argv
-    printfn "%A" controls
+    Logger.Log Info (sprintf "%A" controls)
+
+    let preprocessed = Preprocessor.Preprocess controls
     0 // return an integer exit code

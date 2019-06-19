@@ -25,3 +25,10 @@ type Controls =
         mode: Mode;
         verbosity: Verbosity;
     }
+
+type CodePosition =
+    { line: int; character: int }
+    override this.ToString () =
+        sprintf "@ line %d, char %d: " this.line this.character
+
+type PreprocessedCode = CodeCharacter of seq<char * CodePosition>
