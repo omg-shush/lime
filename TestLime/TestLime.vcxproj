@@ -63,32 +63,36 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
     <NMakeOutput>TestLime.exe</NMakeOutput>
     <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>
+    </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
     <NMakeOutput>TestLime.exe</NMakeOutput>
     <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>
+    </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --release</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeBuildCommandLine>
     <NMakeOutput>TestLime.exe</NMakeOutput>
     <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>
+    </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --release</NMakeBuildCommandLine>
+    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeBuildCommandLine>
     <NMakeOutput>TestLime.exe</NMakeOutput>
     <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime -&gt; TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
-    <NMakePreprocessorDefinitions>NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>
+    </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>

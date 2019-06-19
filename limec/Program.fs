@@ -2,7 +2,10 @@
 
 open System
 
+open Types
+
 [<EntryPoint>]
 let main argv =
-    printfn "Hello World from F#!"
+    let controls = Controller.Control argv
+    printfn "%A" controls
     0 // return an integer exit code
