@@ -1,0 +1,4 @@
+# Test lime program
+
+Entry = [procedure]
+    "Hello world from lime!" -> PrintLine
