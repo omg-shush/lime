@@ -1,9 +1,9 @@
-# Test lime program
+// Test lime program
 
-#* Test
+/* Test
  * multiline
  * comment
- *#
+ */
 
 Entry = [procedure]
-    "Hello world from lime!" -> PrintLine
+    "Hello world from lime!" -> /* Test inline comment */ PrintLine
