@@ -1,0 +1,6 @@
+ [ WARN ] Argument `TestLime\TestLime.lime---verbose' unknown, skipping
+ [ INFO ] {input = "Program.lime";
+ output = "Program.exe";
+ target = Exe;
+ mode = Debug;
+ verbosity = Terse;}
