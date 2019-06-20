@@ -3,7 +3,7 @@
     "limec": {
       "commandName": "Project",
       "commandLineArgs": "\"TestLime\\TestLime.lime->TestLime\\TestLime.exe\" --verbose --target=exe --mode=debug",
-      "workingDirectory": "C:\\Users\\shive\\Source\\Repos\\Lime"
+      "workingDirectory": "C:\\Users\\possi\\source\\repos\\Lime"
     }
   }
 }

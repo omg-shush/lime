@@ -12,6 +12,12 @@ module Compiler =
         ) "" chars
         + "------------------"
 
+    let tokToString (lexemes: LexedCode) : string =
+        let code = match lexemes with LexedCode code -> code
+        Seq.fold (fun (s: string) (_: CodePosition, l: Lexeme) ->
+            s + " " + l.ToString()
+        ) "" code
+
     [<EntryPoint>]
     let main argv =
         let controls = Controller.Control argv
@@ -19,4 +25,7 @@ module Compiler =
 
         let preprocessed = Preprocessor.Preprocess controls
         Logger.Log Info (seqToString preprocessed) controls
+
+        let lexed = Lexer.Lex preprocessed controls
+        Logger.Log Info (tokToString lexed) controls
         0 // return an integer exit code

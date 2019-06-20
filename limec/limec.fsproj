@@ -7,6 +7,12 @@
 
   <ItemGroup>
     <Compile Include="Stack.fs" />
+    <Compile Include="Tree.fs" />
+    <Compile Include="Association.fs" />
+    <Compile Include="Graph.fs" />
+    <Compile Include="NFA.fs" />
+    <Compile Include="ParseTree.fs" />
+    <Compile Include="Regex.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Logger.fs" />
     <Compile Include="Controller.fs" />
