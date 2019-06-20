@@ -23,6 +23,9 @@ module Preprocessor =
     /// <para> Interprets indentations </para>
     /// </summary>
     let Preprocess (controls: Controls) =
+        let isWhitespace c =
+            c = ' ' || c = '\r' || c = '\n'
+
         let preprocessCommentsIntoWhitespace (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
             let output, _, potentialTrailingComment, potentialTrailingString =
                 List.fold (fun (output: (CodePosition * char) Stack, prevChar: char, inComment: Comment, inString: StringLiteral) (pos: CodePosition, nextChar: char) ->
@@ -58,6 +61,7 @@ module Preprocessor =
                     // Maintaining states
                     | _, _, LineComment, NoString ->
                         // Stay in line comment, replacing all characters with whitespace
+                        let replaceChar = if (isWhitespace nextChar) then nextChar else ' '
                         Cons (output, (pos, ' ')), nextChar, LineComment, NoString
                     | _, _, BlockComment bc, NoString ->
                         // Stay in block comment, replacing all characters with whitespace
@@ -68,6 +72,18 @@ module Preprocessor =
                         Cons (output, (pos, nextChar)), nextChar, NoComment, inString // Stay in same type of string though
                     | _ -> Cons (output, (pos, nextChar)), nextChar, inComment, inString // TODO
                 ) (Stack.Empty, ' ', NoComment, NoString) (Stack.makeList input)
+
+            // Check for dangling comment
+            match potentialTrailingComment with
+            | BlockComment pos -> Logger.Log Error (pos.ToString () + "Block comment never closed, use `*/'")
+            | _ -> () // OK
+
+            // Check for dangling string
+            match potentialTrailingString with
+            | NoString -> () // OK
+            | SingleQuoteString pos -> Logger.Log Error (pos.ToString () + "Character literal never closed, use `''")
+            | DoubleQuoteString pos -> Logger.Log Error (pos.ToString () + "String literal never closed, use `\"'")
+
             output
 
         let preprocessIndentationIntoControlChars (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
