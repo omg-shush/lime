@@ -24,7 +24,11 @@ type Regex =
 
 module Regex =
 
-    let Alphabet = [ 'a' ]
+    // Printable, non-whitespace ASCII characters
+    let Alphabet =
+        seq { 33 .. 126 }
+        |> Seq.map (fun (i: int) -> char i)
+        |> List.ofSeq
 
     let private parseRegex (regex: string) : NFA<char> =
         let regexStream = regex.ToCharArray () |> List.ofArray

@@ -29,4 +29,6 @@ module Compiler =
         let lexed = Lexer.Lex preprocessed controls
         Logger.Log Info (tokToString lexed) controls
 
+        printfn "%A" Regex.Alphabet
+
         0 // return an integer exit code
