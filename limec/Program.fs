@@ -4,8 +4,8 @@ open System
 
 open Types
 
-let listToString (chars: char list) : string =
-    List.fold (fun (s: string) (c: char) ->
+let seqToString (chars: (CodePosition * char) seq) : string =
+    Seq.fold (fun (s: string) (_: CodePosition, c: char) ->
         s + match c with
             | '\t' -> "\\t"
             | '\r' -> "\\r"
@@ -19,5 +19,5 @@ let main argv =
     Logger.Log Info (sprintf "%A" controls)
 
     let preprocessed = Preprocessor.Preprocess controls
-    Logger.Log Info (listToString preprocessed)
+    Logger.Log Info (seqToString preprocessed)
     0 // return an integer exit code
