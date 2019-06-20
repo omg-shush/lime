@@ -6,5 +6,5 @@
  */
 
 Entry = [procedure]
-    "Hello world from   /*lime*/!" -> /* Test inline comment */ PrintLine
+    "Hello world from \"  /*lime*/!" -> /* Test inline comment */ PrintLine
         'c \' this isn\'t a //real character lol' -> PrintChar // PrintChar is probably not real either
