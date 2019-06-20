@@ -1,8 +1,8 @@
 ﻿namespace limec
 
 /// Defines whether an operation acts as a prefix (as in !value),
-/// postfix (as in value*), infix (as in value + value), or circumfix (as in [value])
-type OperationType = Prefix | Postfix | Infix | Circumfix
+/// postfix (as in value*), infix (as in value + value), circumfix (as in [value]), or circumliteral (as in <literal-value>)
+type OperationType = Prefix | Postfix | Infix | Circumfix | Circumliteral
 
 /// Associates an operation with its type
 type Operation<'operation when 'operation: equality> =
@@ -10,11 +10,13 @@ type Operation<'operation when 'operation: equality> =
     | Postfix of 'operation
     | Infix of 'operation
     | Circumfix of 'operation * 'operation
+    | Circumliteral of 'operation * 'operation
     | Adjacent of 'operation
 
     member this.GetOp =
         match this with
-        | Circumfix (_, _) -> Unchecked.defaultof<'operation>
+        | Circumfix _ -> Unchecked.defaultof<'operation>
+        | Circumliteral _ -> Unchecked.defaultof<'operation>
         | Prefix op | Postfix op | Infix op | Adjacent op -> op
 
 /// Carries the data associated with a single parse tree node;
@@ -163,6 +165,40 @@ module ParseTree =
 
                     // Run through workingInput, looking for instances of nextOperationLeft
                     parseListForCircumfixOperation workingInput
+
+                | Circumliteral (nextOperationLeft, nextOperationRight) ->
+                    // Recursively reads through the workingList and substitutes each instance
+                    // of nextOperationLeft and nextOperatonRight surrounding a sublist and inherits that sublist raw
+                    let rec parseListForCircumliteralOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                        if (workingList.Length < 1) then
+                            workingList // Too short to contain another top level circumfix operator part
+                        else
+                            match workingList.[0].data with
+                            | Atom a -> workingList.Head :: (parseListForCircumliteralOperation workingList.Tail) // Not an operation, recurse on rest of list
+                            | Operation op ->
+                                if (op = nextOperationLeft) then
+                                    // Opening parenthesis!
+                                    // Construct subtree with this operation at the root and interior of parentheses
+                                    // (whatever that might parse into) as the child
+
+                                    // Get the interior of the circumfix operator
+                                    let interiorOfCircumliteral = parseListForCircumliteralOperation workingList.Tail
+
+                                    // Add it as self's children
+                                    let circumliteralWithInteriorInherited = { workingList.[0] with children = interiorOfCircumliteral; }
+
+                                    // Inherit unparsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
+                                    circumliteralWithInteriorInherited :: (parseListForCircumliteralOperation (List.skip (interiorOfCircumliteral.Length + 2) workingList))
+                                else if (op = nextOperationRight) then
+                                    // Closing parenthesis!
+                                    // Assume was recursively called after finding an opening parenthesis,
+                                    // so we can stop looking and return interior of the circumfix operator
+                                    List.empty
+                                else
+                                    workingList.Head :: (parseListForCircumliteralOperation workingList.Tail) // Wrong operation, recurse on rest of list
+
+                    // Run through workingInput, looking for instances of nextOperationLeft
+                    parseListForCircumliteralOperation workingInput
 
                 | Adjacent nextOperation ->
                     // Recursively reads through the workingList and substitutes each instance of two adjacent complete subtrees,

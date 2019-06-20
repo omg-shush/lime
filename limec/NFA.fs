@@ -95,7 +95,7 @@ module NFA =
             initial = initial;
             final = Tree.Empty.Insert initial;
         }
-
+    
     let Reject<'alphabet when 'alphabet: comparison> : NFA<'alphabet> =
         let initial = 0
         {
