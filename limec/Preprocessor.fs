@@ -87,7 +87,42 @@ module Preprocessor =
             output
 
         let preprocessIndentationIntoControlChars (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
-            input
+            let output, remainingIndents, _ =
+                List.fold (fun (code: (CodePosition * char) Stack, indents: int list, currentIndent: int Option) (pos: CodePosition, nextChar: char) ->
+                    match currentIndent, nextChar with
+                    | Some currentIndent, ' ' -> code, indents, Some (currentIndent + 1)
+                    | _, '\n' -> Cons (code, (pos, nextChar)), indents, Some 0 // Reset indentation
+                    | _, '\r' -> code, indents, Some 0 // Reset and delete '\r'
+                    | Some currentIndent, _ ->
+                        let totalIndent (indents: int list) = List.fold (fun sum i -> sum + i) 0 indents
+                        // Process this line's indentation
+                        if (currentIndent = totalIndent indents) then
+                            // Same indent level, do nothing
+                            Cons (code, (pos, nextChar)), indents, None
+                        elif (currentIndent > totalIndent indents) then
+                            // Increased indent, emit '\t' and push its level
+                            Cons (Cons (code, (pos, '\t')), (pos, nextChar)), (currentIndent - totalIndent indents) :: indents, None
+                        else
+                            // Unindent
+                            let rec unindent (code: (CodePosition * char) Stack) (indents: int list) (remainingIndent: int) : (CodePosition * char) Stack * int list * int Option =
+                                if (remainingIndent = totalIndent indents) then
+                                    // Done!
+                                    Cons (code, (pos, nextChar)), indents, None
+                                elif (not indents.IsEmpty && remainingIndent > totalIndent indents) then
+                                    // Can pop off another level and then recurse
+                                    unindent (Cons (code, (pos, '\r'))) indents.Tail (remainingIndent - indents.Head)
+                                else
+                                    // Invalid indentation
+                                    Logger.Log Error (pos.ToString () + "Invalid indentation")
+                                    code, indents, None
+                            unindent code indents currentIndent
+                    | _ -> Cons (code, (pos, nextChar)), indents, None // Normal code characters
+                ) (Stack.Empty, List.Empty, Some 0) (Stack.makeList input)
+
+            // Close any trailing scopes
+            let output = List.fold (fun closedOutput _ -> Cons (closedOutput, (output.Top |> fst, '\r'))) output remainingIndents
+
+            output
 
         let preprocessWhitespaceIntoMinimal (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
             input
