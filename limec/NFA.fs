@@ -2,17 +2,17 @@
 
 type State = int
 
-type TransitionInput<'alphabet when 'alphabet: equality> =
+type TransitionInput<'alphabet when 'alphabet: comparison> =
     | Epsilon
     | Alphabet of 'alphabet
 
-type Transition<'alphabet when 'alphabet: equality> =
+type Transition<'alphabet when 'alphabet: comparison> =
     { input: TransitionInput<'alphabet> }
 
-type NFA<'alphabet when 'alphabet: equality> =
+type NFA<'alphabet when 'alphabet: comparison> =
     {
         stateCount: int;
-        graph: Graph<State, Transition<'alphabet>>;
+        graph: Graph<State, Transition<Tree<'alphabet>>>;
         initial: State;
         final: Tree<State>;
     }
@@ -27,9 +27,9 @@ type NFA<'alphabet when 'alphabet: equality> =
                     // Operates recursively; each newly reached state is then queried again for
                     // epsilon transitions to additional states
                     let rec addEpsilonAccessibleStates (state: State) (stateSet: Tree<State>) : Tree<State> =
-                        let transitions : Edge<State, Transition<'alphabet>> list = (this.graph.GetChildren state).Value.List
+                        let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren state).Value.List
                         Seq.fold (
-                            fun (stateSet: Tree<State>) (transition: Edge<State,Transition<'alphabet>>) ->
+                            fun (stateSet: Tree<State>) (transition: Edge<State,Transition<Tree<'alphabet>>>) ->
                                 match transition.label.input with
                                 | Epsilon ->
                                     // Check if destination state is new
@@ -56,17 +56,16 @@ type NFA<'alphabet when 'alphabet: equality> =
                         // Appends the possible next states reachable from the
                         // given current state within the given next input character
                         fun (nextStates: Tree<State>) (currentState: State) ->
-                            let transitions : Edge<State, Transition<'alphabet>> list = (this.graph.GetChildren currentState).Value.List
+                            let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren currentState).Value.List
                             Seq.fold (
                                 // Appends the destination of this possible transition
-                                // if it matches the next input character
-                                fun (nextStates: Tree<State>) (possibleTransition: Edge<State, Transition<'alphabet>>) ->
+                                // if the character set assigned to it contains the next input character
+                                fun (nextStates: Tree<State>) (possibleTransition: Edge<State, Transition<Tree<'alphabet>>>) ->
                                     match possibleTransition.label.input with
                                     | Alphabet alpha ->
-                                        if (alpha = nextInput) then
-                                            nextStates.Insert possibleTransition.dest // Add the state pointed to by this transition
-                                        else
-                                            nextStates // Add nothing
+                                        match alpha.Contains nextInput with
+                                        | Some _ -> nextStates.Insert possibleTransition.dest // Add the state pointed to by this transition
+                                        | None -> nextStates // Add nothing
                                     | Epsilon ->
                                         nextStates // Ignore; assume it was followed and already added to currentStates
                             ) nextStates transitions
@@ -88,7 +87,7 @@ type NFA<'alphabet when 'alphabet: equality> =
 
 module NFA =
 
-    let Accept<'alphabet when 'alphabet: equality> : NFA<'alphabet> =
+    let Accept<'alphabet when 'alphabet: comparison> : NFA<'alphabet> =
         let initial = 0
         {
             stateCount = 1;
@@ -97,7 +96,7 @@ module NFA =
             final = Tree.Empty.Insert initial;
         }
 
-    let Reject<'alphabet when 'alphabet: equality> : NFA<'alphabet> =
+    let Reject<'alphabet when 'alphabet: comparison> : NFA<'alphabet> =
         let initial = 0
         {
             stateCount = 1;
@@ -106,11 +105,11 @@ module NFA =
             final = Tree.Empty
         }
 
-    let RecognizeCharacter (character: 'alphabet) =
+    let RecognizeCharacterSet (characterSet: Tree<'alphabet>) =
         let initial = 0
         let final = 1
         let g1 = Graph.Empty.AddNodes [ initial; final ]
-        let graph = g1.AddEdge initial final { input = character |> Alphabet }
+        let graph = g1.AddEdge initial final { input = characterSet |> Alphabet }
         {
             stateCount = 2;
             graph = graph;
@@ -118,7 +117,10 @@ module NFA =
             final = Tree.Empty.Insert final;
         }
 
-    let CombineGraph (left: Graph<State, Transition<'alphabet>>) (right: Graph<State, Transition<'alphabet>>) =
+    let RecognizeCharacter (character: 'alphabet) =
+        character |> List.singleton |> Tree.ofList |> RecognizeCharacterSet
+
+    let CombineGraph (left: Graph<State, Transition<Tree<'alphabet>>>) (right: Graph<State, Transition<Tree<'alphabet>>>) =
         // Calculate offset to use with node ID's of right, to seamlessly merge node sets 
         let offset (node: State) = node + left.NodeCount
 
@@ -132,19 +134,19 @@ module NFA =
         // Add the edges of right
         let graph =
             Seq.fold (
-                fun (graph: Graph<_, Transition<'alphabet>>) (rightEdge: Edge<_,_>) ->
+                fun (graph: Graph<_, Transition<Tree<'alphabet>>>) (rightEdge: Edge<_,_>) ->
                     graph.AddEdge (offset rightEdge.src) (offset rightEdge.dest) rightEdge.label
             ) graph right.EdgeSet
 
         graph // Return combination
 
-    let CombineGraphs (graphs: Graph<State, Transition<'alphabet>> seq) : Graph<State, Transition<'alphabet>> =
+    let CombineGraphs (graphs: Graph<State, Transition<Tree<'alphabet>>> seq) : Graph<State, Transition<Tree<'alphabet>>> =
         Seq.fold (
             fun combinedGraph nextGraph ->
                 CombineGraph combinedGraph nextGraph
         ) Graph.Empty graphs // TODO: optimize by starting with the first graph itself
 
-    let RecognizeConcatenation<'alphabet when 'alphabet: equality> (left: NFA<'alphabet>) (right: NFA<'alphabet>) =
+    let RecognizeConcatenation<'alphabet when 'alphabet: comparison> (left: NFA<'alphabet>) (right: NFA<'alphabet>) =
         // TODO: replace next three blocks with a call to CombineGraph(s)
         // Calculate offset to use with node ID's of right, to seamlessly merge node sets 
         let offset (node: State) = node + left.StateCount
@@ -159,14 +161,14 @@ module NFA =
         // Add the edges of right
         let graph =
             Seq.fold (
-                fun (graph: Graph<_, Transition<'alphabet>>) (rightEdge: Edge<_,_>) ->
+                fun (graph: Graph<_, Transition<Tree<'alphabet>>>) (rightEdge: Edge<_,_>) ->
                     graph.AddEdge (offset rightEdge.src) (offset rightEdge.dest) rightEdge.label
             ) graph right.graph.EdgeSet
 
         // Patch final states of left to initial state of right
         let graph =
             Seq.fold (
-                fun (graph: Graph<State, Transition<'alphabet>>) leftFinalState ->
+                fun (graph: Graph<State, Transition<Tree<'alphabet>>>) leftFinalState ->
                     graph.AddEdge leftFinalState (offset right.initial) { input = Epsilon }
             ) graph left.final.List
         
@@ -224,7 +226,7 @@ module NFA =
 
     let RecognizeKleene (nfa: NFA<'alphabet>) : NFA<'alphabet> =
         // Make final states wrap around to initial
-        let graph = nfa.final.List |> List.fold (fun (graph: Graph<State, Transition<'alphabet>>) state -> graph.AddEdge state nfa.initial { input = Epsilon }) nfa.graph
+        let graph = nfa.final.List |> List.fold (fun (graph: Graph<State, Transition<Tree<'alphabet>>>) state -> graph.AddEdge state nfa.initial { input = Epsilon }) nfa.graph
 
         // Return resulting NFA
         {

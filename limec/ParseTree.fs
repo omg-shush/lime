@@ -134,7 +134,7 @@ module ParseTree =
 
                 | Circumfix (nextOperationLeft, nextOperationRight) ->
                     // Recursively reads through the workingList and substitutes each instance
-                    // of nextOperationLeft and nextOperatonRight surround a sublist with the appropriate circumfix subtree
+                    // of nextOperationLeft and nextOperatonRight surrounding a sublist with the appropriate circumfix subtree
                     let rec parseListForCircumfixOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 1) then
                             workingList // Too short to contain another top level circumfix operator part

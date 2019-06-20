@@ -1,6 +1,6 @@
 ﻿namespace limec
 
-type RegexOp = Concatenation | Union | KleeneStar
+type RegexOp = LeftParen | RightParen | Concatenation | Union | KleeneStar
 
 type Regex =
     {
@@ -18,33 +18,39 @@ module Regex =
 
     let private parseRegex (regex: string) : NFA<char> =
         let regexStream = regex.ToCharArray () |> List.ofArray
-        let regexParsable : Choice<char, RegexOp> list =
-            regexStream |>
-            List.map (
-                fun (c: char) ->
-                    match c with
-                    | '|' -> Choice2Of2 Union
-                    | '*' -> Choice2Of2 KleeneStar
-                    | _ -> Choice1Of2 c
-            )
+        let regexParsable : Choice<Tree<char>, RegexOp> list =
+            regexStream
+            |> List.mapFold (
+                fun (prevChar: char) (nextChar: char) ->
+                    match prevChar, nextChar with
+                    | '\\', _ -> Choice1Of2 (nextChar |> List.singleton |> Tree.ofList), nextChar
+                    | _, '(' -> Choice2Of2 LeftParen, nextChar
+                    | _, ')' -> Choice2Of2 RightParen, nextChar
+                    | _, '|' -> Choice2Of2 Union, nextChar
+                    | _, '*' -> Choice2Of2 KleeneStar, nextChar
+                    | _ -> Choice1Of2 (nextChar |> List.singleton |> Tree.ofList), nextChar
+            ) '\u0000'
+            |> fst
         let regexOperatorPriority =
             [
+                Circumfix (LeftParen, RightParen)
                 Postfix KleeneStar
                 Adjacent Concatenation
                 Infix Union
             ]
         let regexParseTree = ParseTree.Parse regexOperatorPriority regexParsable
         // Returns an NFA that represents the given parse tree of atomic characters and regex operations
-        let rec genMachineFromParseTree (tree: ParseTree<char, RegexOp>) : NFA<char> =
+        let rec genMachineFromParseTree (tree: ParseTree<Tree<char>, RegexOp>) : NFA<char> =
             match tree.data with
             | Atom a ->
-                // Return an NFA that recognizes the atomic character
-                NFA.RecognizeCharacter a
+                // Return an NFA that recognizes the atomic character (set)
+                NFA.RecognizeCharacterSet a
             | Operation op ->
                 // Generate NFAs of each child
                 let childNFAs = List.map genMachineFromParseTree tree.children
                 // Combine child NFA(s) based on which operation this is
                 match op with
+                | LeftParen | RightParen -> invalidArg "regex" "Mismatched parentheses in regex"
                 | Concatenation ->
                     // Concatenate child NFAs
                     NFA.RecognizeConcatenation childNFAs.Head childNFAs.Tail.Head // TODO assert only two child NFAs
