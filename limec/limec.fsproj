@@ -11,6 +11,7 @@
     <Compile Include="Logger.fs" />
     <Compile Include="Controller.fs" />
     <Compile Include="Preprocessor.fs" />
+    <Compile Include="Lexer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 

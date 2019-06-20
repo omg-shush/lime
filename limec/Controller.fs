@@ -16,7 +16,7 @@ module Controller =
                 // I/O argument
                 let ioargs = argument.Split "->"
                 if (ioargs.Length <> 2) then
-                    Logger.Log Warning ("Argument `" + argument + "' misformed, use `input-file-name->output-file-name'")
+                    Logger.Log Warning ("Argument `" + argument + "' misformed, use `input-file-name->output-file-name'") defaultControls
                     controls
                 else
                     { controls with input = ioargs.[0]; output = ioargs.[1] }
@@ -31,10 +31,10 @@ module Controller =
                             | "il" -> { controls with target = Il }
                             | "exe" -> { controls with target = Exe }
                             | _ ->
-                                Logger.Log Warning ("Argument `" + argument + "' misformed, use `--target=EXE'")
+                                Logger.Log Warning ("Argument `" + argument + "' misformed, use `--target=EXE'") defaultControls
                                 controls
                         else
-                            Logger.Log Warning ("Argument `" + argument + "' misformed, use `--target=EXE'")
+                            Logger.Log Warning ("Argument `" + argument + "' misformed, use `--target=EXE'") defaultControls
                             controls
                     | "mode" ->
                         if (flagargs.Length = 2) then
@@ -42,21 +42,21 @@ module Controller =
                             | "debug" -> { controls with mode = Debug }
                             | "release" -> {controls with mode = Release }
                             | _ ->
-                                Logger.Log Warning ("Argument `" + argument + "' misformed, use `--mode=DEBUG|RELEASE'")
+                                Logger.Log Warning ("Argument `" + argument + "' misformed, use `--mode=DEBUG|RELEASE'") defaultControls
                                 controls
                         else
-                            Logger.Log Warning ("Argument `" + argument + "' misformed, use `--mode=DEBUG|RELEASE'")
+                            Logger.Log Warning ("Argument `" + argument + "' misformed, use `--mode=DEBUG|RELEASE'") defaultControls
                             controls
                     | "verbose" ->
                         { controls with verbosity = Verbose }
                     | _ ->
-                        Logger.Log Warning ("Flag `" + flagargs.[0] + "' unknown, skipping")
+                        Logger.Log Warning ("Flag `" + flagargs.[0] + "' unknown, skipping") defaultControls
                         controls
                 else
-                    Logger.Log Warning ("Argument `" + argument + "' unknown, skipping")
+                    Logger.Log Warning ("Argument `" + argument + "' unknown, skipping") defaultControls
                     controls
             else
                 // Unknown argument
-                Logger.Log Warning ("Argument `" + argument + "' unknown, skipping")
+                Logger.Log Warning ("Argument `" + argument + "' unknown, skipping") defaultControls
                 controls
         ) defaultControls argv

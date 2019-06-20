@@ -35,4 +35,9 @@ type CodePosition =
     member this.NextChar = { this with character = this.character + 1 }
     member this.NextLine = { this with line = this.line + 1; character = CodePosition.Start.character }
 
-type PreprocessedCode = CodeCharacter of seq<char * CodePosition>
+type PreprocessedCode = PreprocessedCode of (CodePosition * char) seq
+
+type Lexeme =
+    | SomeLexeme // TODO
+
+type LexedCode = LexedCode of (CodePosition * Lexeme) seq

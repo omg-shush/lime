@@ -22,7 +22,7 @@ module Preprocessor =
     /// <para> Recognizes string/character literals </para>
     /// <para> Interprets indentations </para>
     /// </summary>
-    let Preprocess (controls: Controls) =
+    let Preprocess (controls: Controls) : PreprocessedCode =
         let isWhitespace c =
             c = ' ' || c = '\r' || c = '\n'
 
@@ -75,14 +75,14 @@ module Preprocessor =
 
             // Check for dangling comment
             match potentialTrailingComment with
-            | BlockComment pos -> Logger.Log Error (pos.ToString () + "Block comment never closed, use `*/'")
+            | BlockComment pos -> Logger.Log Error (pos.ToString () + "Block comment never closed, use `*/'") controls
             | _ -> () // OK
 
             // Check for dangling string
             match potentialTrailingString with
             | NoString -> () // OK
-            | SingleQuoteString pos -> Logger.Log Error (pos.ToString () + "Character literal never closed, use `''")
-            | DoubleQuoteString pos -> Logger.Log Error (pos.ToString () + "String literal never closed, use `\"'")
+            | SingleQuoteString pos -> Logger.Log Error (pos.ToString () + "Character literal never closed, use `''") controls
+            | DoubleQuoteString pos -> Logger.Log Error (pos.ToString () + "String literal never closed, use `\"'") controls
 
             output
 
@@ -113,7 +113,7 @@ module Preprocessor =
                                     unindent (Cons (code, (pos, '\r'))) indents.Tail (remainingIndent - indents.Head)
                                 else
                                     // Invalid indentation
-                                    Logger.Log Error (pos.ToString () + "Invalid indentation")
+                                    Logger.Log Error (pos.ToString () + "Invalid indentation") controls
                                     code, indents, None
                             unindent code indents currentIndent
                     | _ -> Cons (code, (pos, nextChar)), indents, None // Normal code characters
@@ -151,3 +151,6 @@ module Preprocessor =
         |> preprocessIndentationIntoControlChars
         |> preprocessWhitespaceIntoMinimal
         |> Stack.makeList
+        |> Seq.ofList
+        |> PreprocessedCode
+

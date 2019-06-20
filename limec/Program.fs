@@ -2,7 +2,8 @@
 
 module Compiler =
 
-    let seqToString (chars: (CodePosition * char) seq) : string =
+    let seqToString (chars: PreprocessedCode) : string =
+        let chars = match chars with PreprocessedCode chars -> chars
         Seq.fold (fun (s: string) (_: CodePosition, c: char) ->
             s + match c with
                 | '\t' -> "\\t"
@@ -14,8 +15,8 @@ module Compiler =
     [<EntryPoint>]
     let main argv =
         let controls = Controller.Control argv
-        Logger.Log Info (sprintf "%A" controls)
+        Logger.Log Info (sprintf "%A" controls) controls
 
         let preprocessed = Preprocessor.Preprocess controls
-        Logger.Log Info (seqToString preprocessed)
+        Logger.Log Info (seqToString preprocessed) controls
         0 // return an integer exit code
