@@ -6,8 +6,12 @@ open Types
 
 let listToString (chars: char list) : string =
     List.fold (fun (s: string) (c: char) ->
-        s + c.ToString ()
+        s + match c with
+            | '\t' -> "\\t"
+            | '\r' -> "\\r"
+            | _ -> c.ToString ()
     ) "" chars
+    + "------------------"
 
 [<EntryPoint>]
 let main argv =
