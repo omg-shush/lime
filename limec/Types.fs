@@ -1,4 +1,4 @@
-﻿module Types
+﻿namespace limec
 
 type LogLevel =
     | Info

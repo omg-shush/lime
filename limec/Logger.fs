@@ -1,11 +1,11 @@
-﻿module Logger
+﻿namespace limec
 
 open System
 
-open Types
+module Logger =
 
-let Log (level: LogLevel) (msg: string) =
-    match level with
-    | Info -> Console.WriteLine (" [ INFO ] " + msg)
-    | Warning -> Console.WriteLine (" [ WARN ] " + msg)
-    | Error -> Console.Error.WriteLine (" [ ERROR ] " + msg)
+    let Log (level: LogLevel) (msg: string) =
+        match level with
+        | Info -> Console.WriteLine (" [ INFO ] " + msg)
+        | Warning -> Console.WriteLine (" [ WARN ] " + msg)
+        | Error -> Console.Error.WriteLine (" [ ERROR ] " + msg)
