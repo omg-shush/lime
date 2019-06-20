@@ -1,6 +1,14 @@
 ﻿namespace limec
 
-type RegexOp = LeftParen | RightParen | LeftBracket | RightBracket | LeftSquare | RightSquare | Concatenation | Union | KleeneStar
+open System
+
+type RegexOp =
+    | LeftParen | RightParen
+    | LeftBracket | RightBracket
+    | LeftSquare | RightSquare
+    | Concatenation
+    | Union
+    | KleeneStar
 
 type Regex =
     {
@@ -15,6 +23,8 @@ type Regex =
         this.machine.Simulate inputStream
 
 module Regex =
+
+    let Alphabet = [ 'a' ]
 
     let private parseRegex (regex: string) : NFA<char> =
         let regexStream = regex.ToCharArray () |> List.ofArray
@@ -70,11 +80,18 @@ module Regex =
                     |> NFA.RecognizeCharacterSet
                 | LeftSquare | RightSquare ->
                     // Return an NFA that recognnizes the inverse of the atomic character set
-                    List.map (fun (tree: ParseTree<char, RegexOp>) ->
-                        match tree.data with
-                        | Atom a -> a
-                        | _ -> invalidArg "regex" "Operators are not allowed inside a character class"
-                    ) tree.children
+                    // First, construct tree of elements to NOT include
+                    let inverseTree =
+                        List.map (fun (tree: ParseTree<char, RegexOp>) ->
+                            match tree.data with
+                            | Atom a -> a
+                            | _ -> invalidArg "regex" "Operators are not allowed inside a character class"
+                        ) tree.children
+                        |> Tree.ofList
+
+                    // Next, take all characters in the alphabet that are NOT in to inverseTree
+                    Alphabet
+                    |> List.filter (fun (c: char) -> match inverseTree.Contains c with Some _ -> false | None -> true )
                     |> Tree.ofList
                     |> NFA.RecognizeCharacterSet
                 | Concatenation ->
