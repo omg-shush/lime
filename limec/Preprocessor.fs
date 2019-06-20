@@ -125,7 +125,15 @@ module Preprocessor =
             output
 
         let preprocessWhitespaceIntoMinimal (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
-            input
+            let output, lastChar =
+                List.fold (fun (code: (CodePosition * char) Stack, lastChar: char) (pos: CodePosition, nextChar: char) ->
+                    match lastChar, nextChar with
+                    | ' ', '\n' -> Cons (code.Bottom, (pos, '\n')), nextChar // Replace previous whitespace with the newline
+                    | ' ', ' ' | '\n', ' ' | '\n', '\n' -> code, nextChar // Skip this whitespace character
+                    | _ -> Cons (code, (pos, nextChar)), nextChar // Keep code character
+                ) (Stack.Empty, '\n') (Stack.makeList input)
+
+            output
 
         controls.input
         |> IO.File.ReadAllText
