@@ -1,5 +1,7 @@
 ﻿namespace limec
 
+// TODO implement right-associative operators!
+
 /// Defines whether an operation acts as a prefix (as in !value),
 /// postfix (as in value*), infix (as in value + value), circumfix (as in [value]), or circumliteral (as in <literal-value>)
 type OperationType = Prefix | Postfix | Infix | Circumfix | Circumliteral

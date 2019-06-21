@@ -22,6 +22,34 @@ type Regex =
         let inputStream = input.ToCharArray () |> Seq.ofArray
         this.machine.Simulate inputStream
 
+    /// <summary><para>
+    /// Finds the smallest number of characters that matches, then extends it until the string
+    /// stops matching, and then stops.
+    /// </para><para>
+    /// Returns the list of characters matching the regex, followed by the remaining input.
+    /// </para></summary>
+    member this.MatchEarlyLongest (input: char seq) : char list * char seq =
+        // Turns [1, 2, 3, ...] into [ [], [1], [1, 2], [1, 2, 3], ... ]
+        let basedSubsequences (s: 'T seq) = Seq.initInfinite (fun i -> s |> Seq.take i)
+        // Turns [1, 2, 3, ...] into [ [1, 2, 3, ...], [2, 3, ...], [3, ...], ... ]
+        let tailSubsequences (s: 'T seq) = Seq.initInfinite (fun i -> s |> Seq.skip i)
+
+        let matchingList =
+            input
+            |> basedSubsequences
+            |> Seq.skipWhile (fun (c: char seq) ->
+                // Take larger and larger bases until the regex matches
+                not (this.machine.Simulate c)
+            )
+            |> Seq.takeWhile (fun (c: char seq) ->
+                // Take larger and larger bases until the regex stops matching
+                this.machine.Simulate c
+            )
+            |> Seq.last
+            |> List.ofSeq
+
+        matchingList, Seq.skip (matchingList.Length) input
+
 module Regex =
 
     // Printable, non-whitespace ASCII characters
