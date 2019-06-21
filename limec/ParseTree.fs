@@ -62,9 +62,8 @@ module ParseTree =
                         if (workingList.Length < 2) then
                             workingList // Too short to contain another top level infix operator
                         else
-                            match workingList.[0].data with
-                            | Atom a -> workingList.Head :: (parseListForPrefixOperation workingList.Tail) // Not an operation, recurse on rest of list
-                            | Operation op ->
+                            match workingList.[0].data, workingList.[0].children.Length with
+                            | Operation op, 0 ->
                                 if (op = nextOperation) then
                                     // Construct subtree with this operation at the root
                                     let parsedSubtree =
@@ -75,9 +74,10 @@ module ParseTree =
                                             children = List.singleton workingList.[1]
                                         }
                                     // Append new subtree to parsed version of rest of list
-                                    parsedSubtree :: (parseListForPrefixOperation workingList.Tail.Tail)
+                                    parseListForPrefixOperation (parsedSubtree :: workingList.Tail.Tail)
                                 else
                                     workingList.Head :: (parseListForPrefixOperation workingList.Tail) // Wrong operation, recurse on rest of list
+                            | _ -> workingList.Head :: (parseListForPrefixOperation workingList.Tail) // Not an operation, recurse on rest of list
 
                     // Run through workingInput, looking for instances of nextOperation
                     parseListForPrefixOperation workingInput
@@ -89,9 +89,8 @@ module ParseTree =
                         if (workingList.Length < 2) then
                             workingList // Too short to contain another top level infix operator
                         else
-                            match workingList.[1].data with
-                            | Atom a -> workingList.Head :: (parseListForPostfixOperation workingList.Tail) // Not an operation, recurse on rest of list
-                            | Operation op ->
+                            match workingList.[1].data, workingList.[1].children.Length with
+                            | Operation op, 0 ->
                                 if (op = nextOperation) then
                                     // Construct subtree with this operation at the root
                                     let parsedSubtree =
@@ -102,9 +101,10 @@ module ParseTree =
                                             children = List.singleton workingList.[0]
                                         }
                                     // Append new subtree to parsed version of rest of list
-                                    parsedSubtree :: (parseListForPostfixOperation workingList.Tail.Tail)
+                                    parseListForPostfixOperation (parsedSubtree :: workingList.Tail.Tail)
                                 else
                                     workingList.Head :: (parseListForPostfixOperation workingList.Tail) // Wrong operation, recurse on rest of list
+                            | _ -> workingList.Head :: (parseListForPostfixOperation workingList.Tail) // Not an operation, recurse on rest of list
 
                     // Run through workingInput, looking for instances of nextOperation
                     parseListForPostfixOperation workingInput
@@ -116,9 +116,8 @@ module ParseTree =
                         if (workingList.Length < 3) then
                             workingList // Too short to contain another top level infix operator
                         else
-                            match workingList.[1].data with
-                            | Atom a -> workingList.Head :: (parseListForInfixOperation workingList.Tail) // Not an operation, recurse on rest of list
-                            | Operation op ->
+                            match workingList.[1].data, workingList.[1].children.Length with
+                            | Operation op, 0 ->
                                 if (op = nextOperation) then
                                     // Construct subtree with this operation at the root
                                     let parsedSubtree =
@@ -129,9 +128,10 @@ module ParseTree =
                                             children = workingList.[0] :: (List.singleton workingList.[2])
                                         }
                                     // Append new subtree to parsed version of rest of list
-                                    parsedSubtree :: (parseListForInfixOperation workingList.Tail.Tail.Tail)
+                                    parseListForInfixOperation (parsedSubtree :: workingList.Tail.Tail.Tail)
                                 else
                                     workingList.Head :: (parseListForInfixOperation workingList.Tail) // Wrong operation, recurse on rest of list
+                            | _ -> workingList.Head :: (parseListForInfixOperation workingList.Tail) // Not an operation, recurse on rest of list
 
                     // Run through workingInput, looking for instances of nextOperation
                     parseListForInfixOperation workingInput
@@ -143,9 +143,8 @@ module ParseTree =
                         if (workingList.Length < 1) then
                             workingList // Too short to contain another top level circumfix operator part
                         else
-                            match workingList.[0].data with
-                            | Atom a -> workingList.Head :: (parseListForCircumfixOperation workingList.Tail) // Not an operation, recurse on rest of list
-                            | Operation op ->
+                            match workingList.[0].data, workingList.[0].children.Length with
+                            | Operation op, 0 ->
                                 if (op = nextOperationLeft) then
                                     // Opening parenthesis!
                                     // Construct subtree with this operation at the root and interior of parentheses
@@ -156,7 +155,7 @@ module ParseTree =
                                     // Parse that interior into a united parse tree
                                     let interiorOfCircumfixParseTree = (parseAtomized opPriority interiorOfCircumfix).Head // TODO assert returned tree list is singleton
                                     // Replace self with parsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
-                                    interiorOfCircumfixParseTree :: (parseListForCircumfixOperation (List.skip (interiorOfCircumfix.Length + 2) workingList))
+                                    parseListForCircumfixOperation (interiorOfCircumfixParseTree :: (List.skip (interiorOfCircumfix.Length + 2) workingList))
                                 else if (op = nextOperationRight) then
                                     // Closing parenthesis!
                                     // Assume was recursively called after finding an opening parenthesis,
@@ -164,6 +163,7 @@ module ParseTree =
                                     List.empty
                                 else
                                     workingList.Head :: (parseListForCircumfixOperation workingList.Tail) // Wrong operation, recurse on rest of list
+                            | _ -> workingList.Head :: (parseListForCircumfixOperation workingList.Tail) // Not an operation, recurse on rest of list
 
                     // Run through workingInput, looking for instances of nextOperationLeft
                     parseListForCircumfixOperation workingInput
@@ -175,9 +175,8 @@ module ParseTree =
                         if (workingList.Length < 1) then
                             workingList // Too short to contain another top level circumfix operator part
                         else
-                            match workingList.[0].data with
-                            | Atom a -> workingList.Head :: (parseListForCircumliteralOperation workingList.Tail) // Not an operation, recurse on rest of list
-                            | Operation op ->
+                            match workingList.[0].data, workingList.[0].children.Length with
+                            | Operation op, 0 ->
                                 if (op = nextOperationLeft) then
                                     // Opening parenthesis!
                                     // Construct subtree with this operation at the root and interior of parentheses
@@ -190,7 +189,7 @@ module ParseTree =
                                     let circumliteralWithInteriorInherited = { workingList.[0] with children = interiorOfCircumliteral; }
 
                                     // Inherit unparsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
-                                    circumliteralWithInteriorInherited :: (parseListForCircumliteralOperation (List.skip (interiorOfCircumliteral.Length + 2) workingList))
+                                    parseListForCircumliteralOperation (circumliteralWithInteriorInherited :: (List.skip (interiorOfCircumliteral.Length + 2) workingList))
                                 else if (op = nextOperationRight) then
                                     // Closing parenthesis!
                                     // Assume was recursively called after finding an opening parenthesis,
@@ -198,6 +197,7 @@ module ParseTree =
                                     List.empty
                                 else
                                     workingList.Head :: (parseListForCircumliteralOperation workingList.Tail) // Wrong operation, recurse on rest of list
+                            | _ -> workingList.Head :: (parseListForCircumliteralOperation workingList.Tail) // Not an operation, recurse on rest of list
 
                     // Run through workingInput, looking for instances of nextOperationLeft
                     parseListForCircumliteralOperation workingInput
@@ -254,7 +254,7 @@ module ParseTree =
 
         // Assert that, having parsed all operations, there is only one root operation
         if (parsedInput.Length <> 1) then
-            invalidArg "input" "Given input does not parse into a single tree"
+            invalidArg "input" ("Given input does not parse into a single tree: " + parsedInput.ToString ())
         else
             parsedInput.Head // Return the root node
 

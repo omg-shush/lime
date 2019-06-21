@@ -103,19 +103,19 @@ module Preprocessor =
                             // Increased indent, emit '\t' and push its level
                             Cons (Cons (code, (pos, '\t')), (pos, nextChar)), (currentIndent - totalIndent indents) :: indents, None
                         else
-                            // Unindent
-                            let rec unindent (code: (CodePosition * char) Stack) (indents: int list) (remainingIndent: int) : (CodePosition * char) Stack * int list * int Option =
-                                if (remainingIndent = totalIndent indents) then
+                            // Unindent; pop off indentation levels until the sum total matches the current indentation
+                            let rec unindent (code: (CodePosition * char) Stack) (reducedIndents: int list) : (CodePosition * char) Stack * int list * int Option =
+                                if (currentIndent = totalIndent reducedIndents) then
                                     // Done!
-                                    Cons (code, (pos, nextChar)), indents, None
-                                elif (not indents.IsEmpty && remainingIndent > totalIndent indents) then
+                                    Cons (code, (pos, nextChar)), reducedIndents, None
+                                elif (not reducedIndents.IsEmpty && currentIndent < totalIndent reducedIndents) then
                                     // Can pop off another level and then recurse
-                                    unindent (Cons (code, (pos, '\r'))) indents.Tail (remainingIndent - indents.Head)
+                                    unindent (Cons (code, (pos, '\r'))) reducedIndents.Tail
                                 else
                                     // Invalid indentation
-                                    Logger.Log Error (pos.ToString () + "Invalid indentation") controls
-                                    code, indents, None
-                            unindent code indents currentIndent
+                                    Logger.Log Error (sprintf "%sInvalid indentation of %d in context of %A" (pos.ToString ()) currentIndent reducedIndents) controls
+                                    code, reducedIndents, None
+                            unindent code indents
                     | _ -> Cons (code, (pos, nextChar)), indents, None // Normal code characters
                 ) (Stack.Empty, List.Empty, Some 0) (Stack.makeList input)
 
@@ -140,9 +140,9 @@ module Preprocessor =
         |> List.ofSeq
         |> List.mapFold (fun (cp: CodePosition) (c: char) ->
             let nextCp =
-                match c with
+                match c with // Update code position for each character
                 | '\n' -> cp.NextLine
-                | _ -> cp.NextLine
+                | _ -> cp.NextChar
             (cp, c), nextCp
         ) CodePosition.Start
         |> fst

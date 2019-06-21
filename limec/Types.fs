@@ -38,6 +38,13 @@ type CodePosition =
 type PreprocessedCode = PreprocessedCode of (CodePosition * char) seq
 
 type Lexeme =
-    | SomeLexeme // TODO
+    | Identifier of string
+    | StringLiteral of string
+    | CharLiteral of char
+    | Operator of string
+    | Complete
+    | BeginBlock
+    | EndBlock
+    | Unknown
 
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq

@@ -9,14 +9,14 @@ module Compiler =
                 | '\t' -> "\\t"
                 | '\r' -> "\\r"
                 | _ -> c.ToString ()
-        ) "" chars
+        ) "\n" chars
         + "------------------"
 
     let tokToString (lexemes: LexedCode) : string =
         let code = match lexemes with LexedCode code -> code
         Seq.fold (fun (s: string) (_: CodePosition, l: Lexeme) ->
             s + " " + l.ToString()
-        ) "" code
+        ) "\n" code
 
     [<EntryPoint>]
     let main argv =

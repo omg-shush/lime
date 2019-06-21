@@ -1,10 +1,35 @@
+/* Old test code!
+
 // Test lime program
 
 /* Test
  * multiline
  * comment
- */
+ *
 
-Entry = [procedure]
-    "Hello world from \"  /*lime*/!" -> /* Test inline comment */ PrintLine
-        'c \' this isn\'t a //real character lol' -> PrintChar // PrintChar is probably not real either
+Entry=[procedure = stuff
+    "Hello world from \"  /*lime*/ /*!" -> /* Test inline comment * PrintLine
+        'c' -> PrintChar // PrintChar is probably not real either
+    */
+
+/// New test program!!
+
+Entry=[ procedure ]
+    "Hello world from \"lime\" !!!" -> PrintLine
+/* big indent!   */     "Hello from a ... sUbSCoPe" -> PrintLine
+    PrintLine // Add newline, for readability /* or something like that
+
+    // Local storage!!
+    localvar=int
+    MyFunc -> localvar // this calls a function, apparently
+
+            
+        /**/
+
+// Returns the answer to life, the universe, and everything
+MyFunc = [procedure -> result = int]
+    // Oops, fix the answer real quick!
+    answer plus one -> answer
+    answer -> result
+
+answer = four one
