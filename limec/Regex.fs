@@ -9,6 +9,7 @@ type RegexOp =
     | Concatenation
     | Union
     | KleeneStar
+    | QuestionMark
 
 type Regex =
     {
@@ -28,41 +29,50 @@ type Regex =
     /// </para><para>
     /// Returns the list of characters matching the regex, followed by the remaining input.
     /// </para></summary>
-    member this.MatchEarlyLongest (input: char seq) : char list * char seq =
+    member this.MatchEarlyLongest (input: char seq) : char list = //* char seq =
         // Turns [1, 2, 3, ...] into [ [], [1], [1, 2], [1, 2, 3], ... ]
-        let basedSubsequences (s: 'T seq) =
-            Seq.initInfinite (fun i ->
-                match (i - 1), Seq.tryItem (i - 1) s with
-                | -1, _ | _, Some _ -> Some (Seq.take i s)
-                | _ -> None
-            )
-            |> Seq.takeWhile (fun x -> match x with Some _ -> true | None -> false)
-            |> Seq.map (fun x -> x.Value)
+        let basedSubsequences (s: 'T seq) = Seq.init (Seq.length input) (fun i -> Seq.take (i + 1) s) // More optimized version
         // Turns [1, 2, 3, ...] into [ [1, 2, 3, ...], [2, 3, ...], [3, ...], ... ]
-        //let tailSubsequences (s: 'T seq) = Seq.initInfinite (fun i -> s |> Seq.skip i) // TODO Fix like above!
+        let tailSubsequences (s: 'T seq) = Seq.init (Seq.length input) (fun i -> Seq.take i s) // Unused for now
 
         let matchingList =
-            //printfn "%A" (basedSubsequences input)
-            //printfn "matching %s..." this.text
             input
             |> basedSubsequences
             |> Seq.skipWhile (fun (c: char seq) ->
                 // Take larger and larger bases until the regex matches
-                //printfn "skip!"
                 not (this.machine.Simulate c)
             )
             |> Seq.takeWhile (fun (c: char seq) ->
                 // Take larger and larger bases until the regex stops matching
-                //printfn "take"
                 this.machine.Simulate c
             )
             |> (fun x -> if (Seq.isEmpty x) then List.Empty else Seq.last x |> List.ofSeq)
 
-        matchingList, Seq.skip (matchingList.Length) input
+        matchingList//, Seq.skip (matchingList.Length) input
+
+    /// <summary><para>
+    /// Finds the largest sequence of input characters from the beginning that matches this regex.
+    /// </para><para>
+    /// Returns the list of characters matching the regex.
+    /// </para></summary>
+    member this.MatchStartLongest (input: char seq) : char list =
+        // Turns [1, 2, 3, ...] into [ [1], [1, 2], [1, 2, 3], ... ]
+        let basedSubsequences (s: 'T seq) = Seq.init (Seq.length input) (fun i -> Seq.take (i + 1) s)
+
+        input
+        |> basedSubsequences
+        |> Seq.fold (fun (longest: char seq) (next: char seq) ->
+            // Take larger and larger bases until the regex matches
+            if (this.machine.Simulate next) then
+                next // Next is the new longest match!
+            else
+                longest // Stick with the old match
+        ) Seq.empty
+        |> List.ofSeq
 
 module Regex =
 
-    // Printable, ASCII characters
+    // Printable, non-whitespace ASCII characters
     let Alphabet =
         seq { 33 .. 126 }
         |> Seq.map (fun (i: int) -> char i)
@@ -80,7 +90,7 @@ module Regex =
             |> mapFoldChoose (
                 fun (prevChar: char) (nextChar: char) ->
                     match prevChar, nextChar with
-                    | '\\', '\\' -> Some (Choice1Of2 nextChar), '\u0000' // Make sure second '\\' doesn't escape anything else!
+                    | '\\', '\\' -> Some (Choice1Of2 nextChar), '\u0000' // Make sure second '\\' doesn't escape anything after it!
                     | _, '\\' -> None, nextChar
                     | '\\', _ -> Some (Choice1Of2 nextChar), nextChar
                     | _, '[' -> Some (Choice2Of2 LeftBracket), nextChar
@@ -91,15 +101,18 @@ module Regex =
                     | _, ')' -> Some (Choice2Of2 RightParen), nextChar
                     | _, '|' -> Some (Choice2Of2 Union), nextChar
                     | _, '*' -> Some (Choice2Of2 KleeneStar), nextChar
+                    | _, '?' -> Some (Choice2Of2 QuestionMark), nextChar
                     | _ -> Some (Choice1Of2 nextChar), nextChar
             ) '\u0000'
             |> fst
+        // Lists operator precedence, from highest to lowest
         let regexOperatorPriority =
             [
+                Circumfix (LeftParen, RightParen)
                 Circumliteral (LeftBracket, RightBracket)
                 Circumliteral (LeftSquare, RightSquare)
-                Circumfix (LeftParen, RightParen)
                 Postfix KleeneStar
+                Postfix QuestionMark
                 Adjacent Concatenation
                 Infix Union
             ]
@@ -113,6 +126,7 @@ module Regex =
             | Operation op ->
                 // Generate NFAs of each child
                 let childNFAs = List.map genMachineFromParseTree tree.children
+
                 // Combine child NFA(s) based on which operation this is
                 match op with
                 | LeftParen | RightParen -> invalidArg "regex" "Mismatched parentheses in regex"
@@ -121,7 +135,7 @@ module Regex =
                     List.map (fun (tree: ParseTree<char, RegexOp>) ->
                         match tree.data with
                         | Atom a -> a
-                        | _ -> invalidArg "regex" "Operators are not allowed inside a character class"
+                        | Operation op -> invalidArg "regex" ("Operator `" + op.ToString () + "' must be escaped with a `\\' when in a character class")
                     ) tree.children
                     |> Tree.ofList
                     |> NFA.RecognizeCharacterSet
@@ -132,7 +146,7 @@ module Regex =
                         List.map (fun (tree: ParseTree<char, RegexOp>) ->
                             match tree.data with
                             | Atom a -> a
-                            | _ -> invalidArg "regex" "Operators are not allowed inside a character class"
+                            | Operation op -> invalidArg "regex" ("Operator `" + op.ToString () + "' must be escaped with a `\\' when in a character class")
                         ) tree.children
                         |> Tree.ofList
 
@@ -150,6 +164,10 @@ module Regex =
                 | KleeneStar ->
                     // Take the Kleene of the single child NFA
                     NFA.RecognizeKleene childNFAs.Head // TODO assert only one child NFA
+                | QuestionMark ->
+                    // Take the union of the single child NFA and the empty-string/epsilon/Accept NFA
+                    NFA.RecognizeUnion childNFAs.Head NFA.Accept // TODO assert only one child NFA
+
         genMachineFromParseTree regexParseTree // Recursively build up an NFA from the parse tree
 
     let ofString (regex: string) : Regex =

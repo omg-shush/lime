@@ -12,46 +12,67 @@ module Lexer =
         let charListToString cl = List.fold (fun str c -> str + (c.ToString ())) "" cl
 
         let recognizeSpaces = Regex.ofString " *"
-        let recognizeIdentifier = Regex.ofString "[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789]*"
+        let recognizeIdentifier = Regex.ofString "[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789]*"
         let recognizeString = Regex.ofString "\"\"|\"(<\">| |\t|\\\")*<\\\\>\""
         let recognizeChar = Regex.ofString "'(<'>| |\t|\\')*'"
-        let recognizeOperator = Regex.ofString @"=|\[|\]|-\>"
+        let recognizeDelimiter = Regex.ofString @"[\[\]\(\)\{\}]"
+        // Options for a numerical: (_ for spacers anywhere where a digit is expected)
+        // + or - digits (potentially unsigned)
+        // (0h/0x hex digits) or (hex digits h/H)
+        // (0 octal digits)
+        // (0y/0b binary digits) or (binary digits)
+        // + or - digits . digits (fF or dD or nothing)
+        let regexDec = "(+|-)?[0123456789][_0123456789]*[uU]?"
+        let regexHex = "0[hx][0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*|[0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*[hH]"
+        let regexOct = "0[cq][01234567][_01234567]*|[01234567][_01234567]*[cC]"
+        let regexBin = "0[by][01][_01]*|[01][_01]*[bB]"
+        let regexFlo = "(+|-)?[0123456789][_0123456789]*(.[0123456789][_0123456789]*)?([fF]|[dD])?"
+        let recognizeNumerical = Regex.ofString (regexDec + "|" + regexHex + "|" + regexOct + "|" + regexBin + "|" + regexFlo)
+        let recognizeOperator = Regex.ofString @"[!#$%&\*+,-./;\<=\>\?@\\^_`\|~][!#$%&\*+,-./;\<=\>\?@\\^_`\|~]*"
         let recognizeComplete = Regex.ofString "\n"
         let recognizeBegin = Regex.ofString "\t"
         let recognizeEnd = Regex.ofString "\r"
 
         let lexNextToken (code: (CodePosition * char) seq) : (CodePosition * Lexeme) * (CodePosition * char) seq * bool =
-            let tokenStartCode = code |> Seq.skipWhile (fun (_: CodePosition, c: char) -> recognizeSpaces.Query (c.ToString ()))
-            let tokenStartChars = tokenStartCode |> unzip |> snd
+            let tokenStartCode = code |> Seq.skipWhile (fun (_: CodePosition, c: char) -> recognizeSpaces.Query (c.ToString ())) // Strip leading spaces
+            let tokenStartChars = tokenStartCode |> unzip |> snd // Strip code positions
             let tokenStartCharsOpti = tokenStartChars |> Seq.takeWhile (fun c -> c <> '\n')
+            let tokenStartCharsSingle = match tokenStartChars |> Seq.tryHead with Some x -> Seq.singleton x | None -> Seq.empty
             
-            let possiblyBegin = tokenStartCharsOpti |> recognizeBegin.MatchEarlyLongest |> fst
-            let possiblyEnd = tokenStartCharsOpti |> recognizeEnd.MatchEarlyLongest |> fst
-            let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest |> fst
-            let possiblyChar = tokenStartCharsOpti |> recognizeChar.MatchEarlyLongest |> fst
-            let possiblyString = tokenStartCharsOpti |> recognizeString.MatchEarlyLongest |> fst
-            let possiblyIdentifier = tokenStartCharsOpti |> recognizeIdentifier.MatchEarlyLongest |> fst
-            let possiblyComplete = tokenStartChars |> recognizeComplete.MatchEarlyLongest |> fst
+            let possiblyBegin = tokenStartCharsSingle |> recognizeBegin.MatchEarlyLongest
+            let possiblyEnd = tokenStartCharsSingle |> recognizeEnd.MatchEarlyLongest
+            let possiblyComplete = tokenStartCharsSingle |> recognizeComplete.MatchEarlyLongest
+
+            let possiblyDelimiter = tokenStartCharsOpti |> recognizeDelimiter.MatchEarlyLongest
+            let possiblyNumerical = tokenStartCharsOpti |> recognizeNumerical.MatchStartLongest // MatchStartLongest will keep trying to match, in case of decimal points that need additional digits
+            let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest
+            let possiblyChar = tokenStartCharsOpti |> recognizeChar.MatchEarlyLongest
+            let possiblyString = tokenStartCharsOpti |> recognizeString.MatchEarlyLongest
+            let possiblyIdentifier = tokenStartCharsOpti |> recognizeIdentifier.MatchEarlyLongest
 
             let token, length =
                 if (not possiblyBegin.IsEmpty) then
                     BeginBlock, possiblyBegin |> List.length
                 elif (not possiblyEnd.IsEmpty) then
                     EndBlock, possiblyEnd |> List.length
+                elif (not possiblyComplete.IsEmpty) then
+                    Complete, possiblyComplete |> List.length
+                elif (not possiblyDelimiter.IsEmpty) then
+                    Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
                 elif (not possiblyOperator.IsEmpty) then
                     Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
-                elif (not possiblyChar.IsEmpty) then
+                elif (not possiblyNumerical.IsEmpty) then
+                    Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
+                elif (possiblyChar.Length > 1) then
                     CharLiteral (possiblyChar.[1]), possiblyChar |> List.length // TODO support other ways of describing characters than just 1 char
                 elif  (not possiblyString.IsEmpty) then
                     StringLiteral (possiblyString |> charListToString), possiblyString |> List.length
                 elif (not possiblyIdentifier.IsEmpty) then
                     Identifier (possiblyIdentifier |> charListToString), possiblyIdentifier |> List.length
-                elif (not possiblyComplete.IsEmpty) then
-                    Complete, possiblyComplete |> List.length
                 else
                     Unknown, 1
 
-            // Return token, unlexed code and whether to keep lexing
+            // Return token (with code position of tokenStart added back in!), unlexed code and (false if we've reached an unknown token a.k.a. end of valid input, true otherwise)
             match token with
             | Unknown -> (CodePosition.Start, token), Seq.skip length tokenStartCode, false
             | _ -> (fst (Seq.head tokenStartCode), token), Seq.skip length tokenStartCode, true
@@ -64,32 +85,6 @@ module Lexer =
                 else
                     Seq.empty // Stop
             resultSeq, state
-
-        (*// TODO remove
-        Diagnostics.Debug.Assert (recognizeSpaces.Query "", "")
-        Diagnostics.Debug.Assert (recognizeSpaces.Query " ", " ")
-        Diagnostics.Debug.Assert (recognizeSpaces.Query "  ", "  ")
-        Diagnostics.Debug.Assert (recognizeSpaces.Query "   ", "   ")
-
-        // TODO remove
-        Diagnostics.Debug.Assert (recognizeIdentifier.Query "E", "E")
-        Diagnostics.Debug.Assert (recognizeIdentifier.MatchEarlyLongest [ 'E' ] |> fst |> List.length = 1, sprintf "%A" (recognizeIdentifier.MatchEarlyLongest [ 'E' ] |> fst))
-        Diagnostics.Debug.Assert (recognizeIdentifier.Query "En", "En")
-        Diagnostics.Debug.Assert (recognizeIdentifier.Query "Ent", "Ent")
-        Diagnostics.Debug.Assert (recognizeIdentifier.Query "Ent8", "Ent8")
-        Diagnostics.Debug.Assert (recognizeIdentifier.Query "Ent8_", "Ent8_")
-
-        Diagnostics.Debug.Assert (recognizeOperator.Query "=", "=")
-        Diagnostics.Debug.Assert (recognizeOperator.Query "[", "[")
-        Diagnostics.Debug.Assert (recognizeOperator.Query "]", "]")
-        Diagnostics.Debug.Assert (recognizeOperator.Query "->", "->")
-
-        Diagnostics.Debug.Assert (recognizeString.Query "\"\"", "\"\"")
-        Diagnostics.Debug.Assert (recognizeString.Query "\"a\"", "\"a\"")
-        Diagnostics.Debug.Assert (recognizeString.Query "\"a c\"", "\"a c\"")
-        Diagnostics.Debug.Assert (recognizeString.Query "\"abcdeF\"", "\"abcdeF\"")
-        Diagnostics.Debug.Assert (recognizeString.Query "\"aa\\\"ab\"", "\"aa\\\"ab\"")
-        Diagnostics.Debug.Assert (recognizeString.Query "\"Hello world from \\\"  /*lime*/!\"", "actual")*)
         
         code
         |> initInfiniteFold lexNextToken

@@ -9,6 +9,11 @@ type TransitionInput<'alphabet when 'alphabet: comparison> =
 type Transition<'alphabet when 'alphabet: comparison> =
     { input: TransitionInput<'alphabet> }
 
+    override this.ToString () =
+        match this.input with
+        | Epsilon -> "{}"
+        | Alphabet a -> a.ToString ()
+
 type NFA<'alphabet when 'alphabet: comparison> =
     {
         stateCount: int;

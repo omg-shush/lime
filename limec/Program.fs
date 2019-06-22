@@ -14,9 +14,9 @@ module Compiler =
 
     let tokToString (lexemes: LexedCode) : string =
         let code = match lexemes with LexedCode code -> code
-        Seq.fold (fun (s: string) (_: CodePosition, l: Lexeme) ->
-            s + " " + l.ToString()
-        ) "\n" code
+        Seq.fold (fun (s: string) (cp: CodePosition, l: Lexeme) ->
+            s + "\n" + cp.ToString () + l.ToString ()
+        ) "" code
 
     [<EntryPoint>]
     let main argv =

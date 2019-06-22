@@ -29,7 +29,7 @@ Entry=[ procedure ]
 // Returns the answer to life, the universe, and everything
 MyFunc = [procedure -> result = int]
     // Oops, fix the answer real quick!
-    answer plus one -> answer
+    answer + (-1.45f) -> answer
     answer -> result
 
-answer = four one
+answer = 0xf00f_CAFE

@@ -39,6 +39,11 @@ and Tree<'T when 'T: comparison> =
     | EmptyTree
     | Element of TreeElement<'T>
 
+    override this.ToString () =
+        this.Array
+        |> Array.map (fun x -> x.ToString ())
+        |> String.concat ", "
+
     member this.Size : int =
         match this with
         | EmptyTree -> 0

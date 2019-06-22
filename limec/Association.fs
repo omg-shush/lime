@@ -17,7 +17,7 @@ type KeyValue<'K, 'V when 'K: comparison> =
             | null -> 1 // I'm more than nothing!
             | :? KeyValue<'K, 'V> as other -> (this :> System.IComparable<_>).CompareTo other
             | _ -> invalidArg "other" "Wrong object type"
-
+            
     interface System.IEquatable<KeyValue<'K, 'V>> with
         member this.Equals other =
             this.key = other.key
@@ -30,10 +30,18 @@ type KeyValue<'K, 'V when 'K: comparison> =
     override this.GetHashCode () =
         hash this.key
 
+    override this.ToString () =
+        this.key.ToString () + " -> " + this.value.ToString ()
+
 type Association<'K, 'V when 'K: comparison> =
     | AssociationTree of Tree<KeyValue<'K, 'V>>
 
     member private this.tree = match this with AssociationTree tree -> tree
+
+    override this.ToString () =
+        this.tree.Array
+        |> Array.map (fun x -> x.ToString ())
+        |> String.concat "\n"
 
     member this.Put key value =
         if (this.ContainsKey key) then

@@ -44,6 +44,9 @@ type ParseTree<'alphabet, 'operation when 'operation: equality> =
     override this.ToString () =
         this.toString ""
 
+    member this.Size =
+        List.fold (fun sum (pt: ParseTree<_,_>) -> sum + pt.Size) 1 this.children
+
 module ParseTree =
 
     let rec private parseAtomized (opPriority: Operation<'operation> list) (atomizedInput: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
@@ -151,11 +154,19 @@ module ParseTree =
                                     // (whatever that might parse into) as the child
 
                                     // Get the interior of the circumfix operator
-                                    let interiorOfCircumfix = parseListForCircumfixOperation workingList.Tail
+                                    let interiorOfCircumfix = parseListForCircumfixOperation (workingList.Tail)
                                     // Parse that interior into a united parse tree
-                                    let interiorOfCircumfixParseTree = (parseAtomized opPriority interiorOfCircumfix).Head // TODO assert returned tree list is singleton
+                                    let interiorOfCircumfixParseTreeResult = (parseAtomized opPriority interiorOfCircumfix)
+                                    let interiorOfCircumfixParseTree =
+                                        if interiorOfCircumfixParseTreeResult.Length = 1 then
+                                            interiorOfCircumfixParseTreeResult.Head
+                                        else
+                                            invalidArg "input" ("Interior of parenthesis does not parse into a single tree: " + interiorOfCircumfixParseTreeResult.ToString ())
                                     // Replace self with parsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
-                                    parseListForCircumfixOperation (interiorOfCircumfixParseTree :: (List.skip (interiorOfCircumfix.Length + 2) workingList))
+                                    // NOTE: with nested parentheses, it's possible some elements of interiorOfCircumfix have already been parsed - need to calculate not just the
+                                    // top node list's length, but the entire size!
+                                    let sizeOfInteriorOfCircumfix = interiorOfCircumfix |> List.fold (fun sum pt -> sum + pt.Size) 0
+                                    parseListForCircumfixOperation (interiorOfCircumfixParseTree :: (List.skip (sizeOfInteriorOfCircumfix + 2) workingList))
                                 else if (op = nextOperationRight) then
                                     // Closing parenthesis!
                                     // Assume was recursively called after finding an opening parenthesis,

@@ -1,19 +1,30 @@
 ﻿namespace limec
 
-type Node<'node when 'node: comparison> = {
-    value: 'node;
-};
+type Node<'node when 'node: comparison> =
+    {
+        value: 'node;
+    }
+    
+    override this.ToString () =
+        this.value.ToString ()
 
-type Edge<'node, 'edge> = {
-    src: 'node;
-    dest: 'node;
-    label: 'edge;
-};
+type Edge<'node, 'edge> =
+    {
+        src: 'node;
+        dest: 'node;
+        label: 'edge;
+    }
+
+    override this.ToString () =
+        "(" + this.src.ToString () + " -> " + this.dest.ToString () + " via " + this.label.ToString () + ")"
 
 type Graph<'node, 'edge when 'node: comparison> =
     | GraphAssociation of Association<Node<'node>, Stack<Edge<'node, 'edge>>>
 
     member private this.graph = match this with GraphAssociation g -> g
+
+    override this.ToString () =
+        this.graph.ToString ()
 
     member this.NodeCount =
         this.graph.Size

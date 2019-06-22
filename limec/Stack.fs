@@ -4,6 +4,11 @@ type Stack<'T> =
     | EmptyStack
     | Cons of 'T Stack * 'T
 
+    override this.ToString () =
+        this.Array
+        |> Array.map (fun x -> x.ToString ())
+        |> String.concat " | "
+
     member this.Bottom : 'T Stack =
         match this with
         | EmptyStack -> invalidArg "stack" "Stack is empty"

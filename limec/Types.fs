@@ -29,7 +29,7 @@ type Controls =
 type CodePosition =
     { line: int; character: int }
     override this.ToString () =
-        sprintf "@ line %d, char %d: " this.line this.character
+        sprintf "@ line %3d, char %3d: " this.line this.character
     static member Start = { line = 1; character = 1 }
     member this.PrevChar = { this with character = this.character - 1 }
     member this.NextChar = { this with character = this.character + 1 }
@@ -41,7 +41,9 @@ type Lexeme =
     | Identifier of string
     | StringLiteral of string
     | CharLiteral of char
+    | Delimiter of char
     | Operator of string
+    | Numerical of string
     | Complete
     | BeginBlock
     | EndBlock
