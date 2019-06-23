@@ -23,37 +23,37 @@ type Operation<'operation when 'operation: equality> =
 
 /// Carries the data associated with a single parse tree node;
 /// either an atom within the alphabet, or an operation over the alphabet
-type ParseData<'alphabet, 'operation when 'operation: equality> =
+type OperatorParseData<'alphabet, 'operation when 'operation: equality> =
     | Atom of 'alphabet
     | Operation of 'operation
 
 /// Represents a node in a parse tree, containing both its own data
 /// and a list of its child nodes
-type ParseTree<'alphabet, 'operation when 'operation: equality> =
+type OperatorParseTree<'alphabet, 'operation when 'operation: equality> =
     {
-        data: ParseData<'alphabet, 'operation>
-        children: ParseTree<'alphabet, 'operation> list
+        data: OperatorParseData<'alphabet, 'operation>
+        children: OperatorParseTree<'alphabet, 'operation> list
     }
 
     member private this.toString (indent: string) =
         indent
         + this.data.ToString ()
         + "\n"
-        + (Seq.fold (fun str (child: ParseTree<_, _>) -> str + indent + child.toString (indent + "    ")) "" this.children)
+        + (Seq.fold (fun str (child: OperatorParseTree<_, _>) -> str + indent + child.toString (indent + "    ")) "" this.children)
 
     override this.ToString () =
         this.toString ""
 
     member this.Size =
-        List.fold (fun sum (pt: ParseTree<_,_>) -> sum + pt.Size) 1 this.children
+        List.fold (fun sum (pt: OperatorParseTree<_,_>) -> sum + pt.Size) 1 this.children
 
-module ParseTree =
+module OperatorParseTree =
 
-    let rec private parseAtomized (opPriority: Operation<'operation> list) (atomizedInput: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+    let rec private parseAtomized (opPriority: Operation<'operation> list) (atomizedInput: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
         // Run through operations in order of priority
         // and parse each instance of it in the (initially flat) list of ParseTrees
         List.fold (
-            fun (workingInput: ParseTree<'alphabet, 'operation> list) (nextOperation: Operation<'operation>) ->
+            fun (workingInput: OperatorParseTree<'alphabet, 'operation> list) (nextOperation: Operation<'operation>) ->
                 // Iterate over all subtrees in the working list
                 // If any match the given operation, then substitute a new tree with that operation
                 // with the adjacent subtrees being operated upon as children
@@ -61,7 +61,7 @@ module ParseTree =
                 | Prefix nextOperation ->
                     // Recursively reads through the workingList and substitutes each instance
                     // of nextOperation with the appropriate prefix subtree
-                    let rec parseListForPrefixOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForPrefixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 2) then
                             workingList // Too short to contain another top level infix operator
                         else
@@ -88,7 +88,7 @@ module ParseTree =
                 | Postfix nextOperation ->
                     // Recursively reads through the workingList and substitutes each instance
                     // of nextOperation with the appropriate postfix subtree
-                    let rec parseListForPostfixOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForPostfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 2) then
                             workingList // Too short to contain another top level infix operator
                         else
@@ -115,7 +115,7 @@ module ParseTree =
                 | Infix nextOperation ->
                     // Recursively reads through the workingList and substitutes each instance
                     // of nextOperation with the appropriate infix subtree
-                    let rec parseListForInfixOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForInfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 3) then
                             workingList // Too short to contain another top level infix operator
                         else
@@ -142,7 +142,7 @@ module ParseTree =
                 | Circumfix (nextOperationLeft, nextOperationRight) ->
                     // Recursively reads through the workingList and substitutes each instance
                     // of nextOperationLeft and nextOperatonRight surrounding a sublist with the appropriate circumfix subtree
-                    let rec parseListForCircumfixOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForCircumfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 1) then
                             workingList // Too short to contain another top level circumfix operator part
                         else
@@ -182,7 +182,7 @@ module ParseTree =
                 | Circumliteral (nextOperationLeft, nextOperationRight) ->
                     // Recursively reads through the workingList and substitutes each instance
                     // of nextOperationLeft and nextOperatonRight surrounding a sublist and inherits that sublist raw
-                    let rec parseListForCircumliteralOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForCircumliteralOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 1) then
                             workingList // Too short to contain another top level circumfix operator part
                         else
@@ -217,11 +217,11 @@ module ParseTree =
                     // Recursively reads through the workingList and substitutes each instance of two adjacent complete subtrees,
                     // where complete means either atomic or operational but already parsed, with the correct operation
                     // as if it were inserted between them
-                    let rec parseListForAdjacentOperation (workingList: ParseTree<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> list =
+                    let rec parseListForAdjacentOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < 2) then
                             workingList // Too short to contain an adjacent pair of complete subtrees
                         else
-                            let isCompleteSubtree (subtree: ParseTree<'alphabet, 'operation>) : bool =
+                            let isCompleteSubtree (subtree: OperatorParseTree<'alphabet, 'operation>) : bool =
                                 match subtree.data with
                                 | Atom _ -> true // Atoms cannot be further parsed
                                 | Operation op ->
@@ -249,7 +249,7 @@ module ParseTree =
 
         ) atomizedInput opPriority
 
-    let Parse (opPriority: Operation<'operation> list) (input: Choice<'alphabet, 'operation> list) : ParseTree<'alphabet, 'operation> =
+    let Parse (opPriority: Operation<'operation> list) (input: Choice<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> =
         // Convert entire input into a list of ParseTree
         let atomizedInput =
             input

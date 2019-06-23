@@ -116,9 +116,9 @@ module Regex =
                 Adjacent Concatenation
                 Infix Union
             ]
-        let regexParseTree = ParseTree.Parse regexOperatorPriority regexParsable
+        let regexParseTree = OperatorParseTree.Parse regexOperatorPriority regexParsable
         // Returns an NFA that represents the given parse tree of atomic characters and regex operations
-        let rec genMachineFromParseTree (tree: ParseTree<char, RegexOp>) : NFA<char> =
+        let rec genMachineFromParseTree (tree: OperatorParseTree<char, RegexOp>) : NFA<char> =
             match tree.data with
             | Atom a ->
                 // Return an NFA that recognizes the atomic character
@@ -132,7 +132,7 @@ module Regex =
                 | LeftParen | RightParen -> invalidArg "regex" "Mismatched parentheses in regex"
                 | LeftBracket | RightBracket ->
                     // Return an NFA that recognizes the atomic character set
-                    List.map (fun (tree: ParseTree<char, RegexOp>) ->
+                    List.map (fun (tree: OperatorParseTree<char, RegexOp>) ->
                         match tree.data with
                         | Atom a -> a
                         | Operation op -> invalidArg "regex" ("Operator `" + op.ToString () + "' must be escaped with a `\\' when in a character class")
@@ -143,7 +143,7 @@ module Regex =
                     // Return an NFA that recognnizes the inverse of the atomic character set
                     // First, construct tree of elements to NOT include
                     let inverseTree =
-                        List.map (fun (tree: ParseTree<char, RegexOp>) ->
+                        List.map (fun (tree: OperatorParseTree<char, RegexOp>) ->
                             match tree.data with
                             | Atom a -> a
                             | Operation op -> invalidArg "regex" ("Operator `" + op.ToString () + "' must be escaped with a `\\' when in a character class")
