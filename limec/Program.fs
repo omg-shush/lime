@@ -29,4 +29,7 @@ module Compiler =
         let lexed = Lexer.Lex preprocessed controls
         Logger.Log Info (tokToString lexed) controls
 
+        let parsed = Parser.Parse lexed controls
+        Logger.Log Info (parsed.ToString ()) controls
+
         0 // return an integer exit code

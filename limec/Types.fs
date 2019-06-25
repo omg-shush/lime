@@ -50,3 +50,5 @@ type Lexeme =
     | Unknown
 
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq
+
+type ParsedCode = ParsedCode of LexedCode
