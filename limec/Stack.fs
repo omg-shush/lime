@@ -1,5 +1,6 @@
 ﻿namespace limec
 
+/// Similar to list, but iterates from bottom to top instead of from front to back
 type Stack<'T> =
     | EmptyStack
     | Cons of 'T Stack * 'T

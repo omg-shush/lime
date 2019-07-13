@@ -2,8 +2,7 @@
   "profiles": {
     "limec": {
       "commandName": "Project",
-      "commandLineArgs": "\"TestLime\\TestLime.lime->TestLime\\TestLime.exe\" --verbose --target=exe --mode=debug",
-      "workingDirectory": "C:\\Users\\shive\\source\\repos\\Lime"
+      "commandLineArgs": "\"..\\..\\..\\..\\TestLime\\TestLime.lime->..\\..\\..\\..\\TestLime\\TestLime.exe\" --verbose --target=exe --mode=debug"
     }
   }
 }
