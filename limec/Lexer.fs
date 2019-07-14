@@ -52,29 +52,29 @@ module Lexer =
 
             let token, length =
                 if (not possiblyBegin.IsEmpty) then
-                    BeginBlock, possiblyBegin |> List.length
+                    Lexeme.BeginBlock, possiblyBegin |> List.length
                 elif (not possiblyEnd.IsEmpty) then
-                    EndBlock, possiblyEnd |> List.length
+                    Lexeme.EndBlock, possiblyEnd |> List.length
                 elif (not possiblyComplete.IsEmpty) then
-                    Complete, possiblyComplete |> List.length
+                    Lexeme.Complete, possiblyComplete |> List.length
                 elif (not possiblyDelimiter.IsEmpty) then
-                    Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
+                    Lexeme.Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
                 elif (not possiblyOperator.IsEmpty) then
-                    Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
+                    Lexeme.Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
                 elif (not possiblyNumerical.IsEmpty) then
-                    Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
+                    Lexeme.Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
                 elif (possiblyChar.Length > 1) then
-                    CharLiteral (possiblyChar.[1]), possiblyChar |> List.length // TODO support other ways of describing characters than just 1 char
+                    Lexeme.CharLiteral (possiblyChar.[1]), possiblyChar |> List.length // TODO support other ways of describing characters than just 1 char
                 elif  (not possiblyString.IsEmpty) then
-                    StringLiteral (possiblyString |> charListToString), possiblyString |> List.length
+                    Lexeme.StringLiteral (possiblyString |> charListToString), possiblyString |> List.length
                 elif (not possiblyIdentifier.IsEmpty) then
-                    Identifier (possiblyIdentifier |> charListToString), possiblyIdentifier |> List.length
+                    Lexeme.Identifier (possiblyIdentifier |> charListToString), possiblyIdentifier |> List.length
                 else
-                    Unknown, 1
+                    Lexeme.Unknown, 1
 
             // Return token (with code position of tokenStart added back in!), unlexed code and (false if we've reached an unknown token a.k.a. end of valid input, true otherwise)
             match token with
-            | Unknown -> (CodePosition.Start, token), Seq.skip length tokenStartCode, false
+            | Lexeme.Unknown -> (CodePosition.Start, token), Seq.skip length tokenStartCode, false
             | _ -> (fst (Seq.head tokenStartCode), token), Seq.skip length tokenStartCode, true
 
         let rec initInfiniteFold (folder: 'State -> 'Result * 'State * bool) (init: 'State) : 'Result seq * 'State =

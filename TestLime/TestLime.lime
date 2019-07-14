@@ -13,10 +13,10 @@ Entry=[procedure = stuff
     */
 
 /// New test program!!
-
+/*
 Entry=[ procedure ]
     "Hello world from \"lime\" !!!" -> PrintLine
-/* big indent!   */     "Hello from a ... sUbSCoPe" -> PrintLine
+/* big indent!   *//*     "Hello from a ... sUbSCoPe" -> PrintLine
     PrintLine // Add newline, for readability /* or something like that
 
     // Local storage!!
@@ -24,7 +24,7 @@ Entry=[ procedure ]
     MyFunc -> localvar // this calls a function, apparently
 
             
-        /**/
+        /*
 
 // Returns the answer to life, the universe, and everything
 MyFunc = [procedure -> result = int]
@@ -33,3 +33,9 @@ MyFunc = [procedure -> result = int]
     answer -> result
 
 answer = 0xf00f_CAFE
+*/
+
+// Acutally legitimate test code
+
+Entry = [ procedure ]
+    "Hello world!" -> PrintLine

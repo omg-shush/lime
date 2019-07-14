@@ -51,4 +51,26 @@ type Lexeme =
 
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
-type ParsedCode = ParsedCode of LexedCode
+type GrammarElement =
+    | ImmutableBinding
+    | Identifier
+    | OperationEquals
+    | OperationPassDataRight
+    | DelimitBeginType
+    | DelimitEndType
+    | DelimitBeginBlock
+    | DelimitEndBlock
+    | Block
+    | Definition
+    | Transfer
+    | Statement
+    | StatementList
+    | TypeHint
+    | Complete
+    | Value
+    | StringLiteral
+    | Unknown // TODO
+
+type ParsedCode =
+    | ParsedCode of ParseTree<GrammarElement, CodePosition * Lexeme>
+    override this.ToString () = "ParsedCode\n" + (match this with ParsedCode pt -> pt.ToString ())
