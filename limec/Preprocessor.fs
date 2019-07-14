@@ -50,13 +50,13 @@ module Preprocessor =
                         Cons (output, (pos, nextChar)), nextChar, NoComment, NoString
                     | '*', '/', BlockComment _, NoString ->
                         // Exit block comment
-                        output, nextChar, NoComment, NoString
+                        output, ' ', NoComment, NoString // Change next char so that the code *//* does not interpret the "//" as a single line comment
                     | x, '\'', NoComment, SingleQuoteString _ when x <> '\\' ->
                         // Exit single quote string
-                        Cons (output, (pos, nextChar)), nextChar, NoComment, NoString
+                        Cons (output, (pos, nextChar)), ' ', NoComment, NoString
                     | x, '"', NoComment, DoubleQuoteString _ when x <> '\\' ->
                         // Exit double quote string
-                        Cons (output, (pos, nextChar)), nextChar, NoComment, NoString
+                        Cons (output, (pos, nextChar)), ' ', NoComment, NoString
 
                     // Maintaining states
                     | _, _, LineComment, NoString ->
