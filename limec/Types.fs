@@ -1,5 +1,10 @@
 ﻿namespace limec
 
+open System
+
+module To =
+    let Do () = raise (NotImplementedException ())
+
 type LogLevel =
     | Info
     | Warning
@@ -52,25 +57,33 @@ type Lexeme =
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
 type GrammarElement =
+    | BindingList
     | ImmutableBinding
-    | Identifier
+    | MutableBinding
     | OperationEquals
-    | OperationPassDataRight
+    | OperationColon
     | DelimitBeginType
     | DelimitEndType
+    | TypeHint
     | DelimitBeginBlock
     | DelimitEndBlock
     | Block
     | Definition
-    | Transfer
+    | Expression
     | Statement
     | StatementList
-    | TypeHint
     | Complete
-    | Value
-    | StringLiteral
-    | Unknown // TODO
 
-type ParsedCode =
+type ParsedCode = 
     | ParsedCode of ParseTree<GrammarElement, CodePosition * Lexeme>
     override this.ToString () = "ParsedCode\n" + (match this with ParsedCode pt -> pt.ToString ())
+
+type Llama =
+    {
+        typ: Llama list
+        def: AST
+    }
+and LlamaIdentifier =
+    | LlamaName of string
+    | LlamaOperator of string
+and AST = AST of Association<string, Llama>

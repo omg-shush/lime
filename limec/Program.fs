@@ -39,4 +39,12 @@ module Compiler =
         let parsed = Parser.Parse lexed controls
         Logger.Log Info (parsed.ToString ()) controls
 
+        let initialAST =
+            AST (Association.Empty.PutAll
+                [
+                    "subroutine", { typ = []; def = AST Association.Empty }
+                ]
+            )
+        let ast = SemanticAnalyzer.Analyze parsed controls initialAST
+
         0

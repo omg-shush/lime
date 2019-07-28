@@ -49,6 +49,11 @@ type Association<'K, 'V when 'K: comparison> =
         else
             this.tree.Insert { key = key; value = value } |> AssociationTree
 
+    member this.PutAll kvlist =
+        match kvlist with
+        | (k, v) :: tail -> (this.Put k v).PutAll tail
+        | [] -> this
+
     member this.Get key =
         let kvOption = this.tree.Contains { key = key; value = Unchecked.defaultof<'V> }
         match kvOption with

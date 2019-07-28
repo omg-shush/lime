@@ -5,15 +5,20 @@ module Parser =
     let Parse (code: LexedCode) (controls: Controls) : ParsedCode =
         let cfgParser =
             [
-                TypeHint, [ DelimitBeginType; Identifier; DelimitEndType ]
-                Value, [ StringLiteral ]
-                Transfer, [ Value; OperationPassDataRight; Identifier ]
-                Statement, [ Transfer; Complete ]
+                Expression, [ Expression; Expression ]
+                TypeHint, [ DelimitBeginType; Expression; DelimitEndType ]
+                Statement, [ Expression; Complete ]
                 StatementList, [ Statement; Statement ]
                 StatementList, [ StatementList; Statement ]
                 Block, [ DelimitBeginBlock; Statement; DelimitEndBlock ]
                 Block, [ DelimitBeginBlock; StatementList; DelimitEndBlock ]
-                Definition, [ Identifier; OperationEquals; TypeHint; Complete; Block ]
+                Definition, [ TypeHint; Complete; Block ]
+                Definition, [ TypeHint; Statement ]
+                ImmutableBinding, [ Expression; OperationEquals; Definition ]
+                MutableBinding, [ Expression; OperationColon; Definition ]
+                BindingList, [ ImmutableBinding ]
+                BindingList, [ MutableBinding ]
+                BindingList, [ BindingList; BindingList ]
             ]
             |> ShiftReduceParser.ofRuleList
         //printfn "%A" (cfgParser.grammar.ToString ())
@@ -23,16 +28,14 @@ module Parser =
         let tagCode (codeElement: CodePosition * Lexeme) =
             let _, lexeme = codeElement
             match lexeme with
-            | Lexeme.Identifier _ -> Identifier
             | Operator "=" -> OperationEquals
-            | Operator "->" -> OperationPassDataRight
+            | Operator ":" -> OperationColon
             | Delimiter '[' -> DelimitBeginType
             | Delimiter ']' -> DelimitEndType
             | BeginBlock -> DelimitBeginBlock
             | EndBlock -> DelimitEndBlock
             | Lexeme.Complete -> Complete
-            | Lexeme.StringLiteral _ -> StringLiteral
-            | _ -> Unknown
+            | _ -> Expression
             , codeElement
         let taggedCode = Seq.map tagCode code'
 
@@ -40,6 +43,5 @@ module Parser =
         let parseTree = cfgParser.Parse taggedCode
         //Logger.Log Info ("\n" + (parseTree.ToString ())) controls
 
-        // TODO recurse over the entire parse tree to build up an Abstract Syntax Tree & return it
         parseTree
         |> ParsedCode

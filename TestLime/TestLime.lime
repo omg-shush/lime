@@ -35,7 +35,7 @@ MyFunc = [procedure -> result = int]
 answer = 0xf00f_CAFE
 */
 
-// Acutally legitimate test code
+// Actually legitimate test code
 
-Entry = [ procedure ]
+Entry = [ subroutine ]
     "Hello world!" -> PrintLine

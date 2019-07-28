@@ -8,7 +8,7 @@ type Stack<'T> =
     override this.ToString () =
         this.Array
         |> Array.map (fun x -> x.ToString ())
-        |> String.concat " | "
+        |> String.concat "\n|> "
 
     member this.Bottom : 'T Stack =
         match this with
