@@ -28,6 +28,11 @@ type Stack<'T> =
         | EmptyStack -> invalidArg "stack" "Can't pop an empty stack"
         | Cons (bottom, top) -> (top, bottom)
 
+    member this.Append other =
+        match other with
+        | Cons (bottom, top) -> Cons ((this.Append bottom), top)
+        | EmptyStack -> this
+
     member this.Length : int =
         match this with
         | EmptyStack -> 0

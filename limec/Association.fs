@@ -54,6 +54,14 @@ type Association<'K, 'V when 'K: comparison> =
         | (k, v) :: tail -> (this.Put k v).PutAll tail
         | [] -> this
 
+    member this.Append (assoc: Association<'K, 'V>) =
+        this.PutAll (List.map (fun kv -> kv.key, kv.value) assoc.KeyValueSet)
+
+    member this.AppendAll (assocs: Association<'K, 'V> list) =
+        match assocs with
+        | assoc :: tail -> (this.Append assoc).AppendAll tail
+        | [] -> this
+
     member this.Get key =
         let kvOption = this.tree.Contains { key = key; value = Unchecked.defaultof<'V> }
         match kvOption with

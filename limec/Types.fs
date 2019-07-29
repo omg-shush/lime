@@ -58,6 +58,7 @@ type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
 type GrammarElement =
     | BindingList
+    | Binding
     | ImmutableBinding
     | MutableBinding
     | OperationEquals
@@ -80,10 +81,55 @@ type ParsedCode =
 
 type Llama =
     {
-        typ: Llama list
-        def: AST
+        typ: LlamaIdentifier list
+        def: AbstractSyntaxTree
     }
+    member this.toString indent =
+        (String.replicate indent "    ") + (List.fold (fun state t -> state + " " + (t.ToString ())) " " this.typ)
+        + " " + (this.def.ToString ())
+    override this.ToString () = this.toString 0
+and LlamaType =
+    {
+        typ: LlamaIdentifier list
+        def: AbstractTypeTree
+    }
+    member this.toString indent =
+        (String.replicate indent "    ") + (List.fold (fun state t -> state + " " + (t.ToString ())) " " this.typ)
+        + " " + (this.def.ToString ())
+    override this.ToString () = this.toString 0
 and LlamaIdentifier =
     | LlamaName of string
     | LlamaOperator of string
-and AST = AST of Association<string, Llama>
+    override this.ToString () = match this with LlamaName name -> name | LlamaOperator op -> "(" + op + ")"
+and LlamaLiteral =
+    | LlamaString of string
+    | LlamaChar of char
+    | LlamaInt of int64
+    | LlamaDouble of double
+    | LlamaBool of bool
+and CodeStatement =
+    | CodeBlock of AbstractSyntaxTree
+    | CodeLine of LlamaExpression
+and LlamaExpression = LlamaExpression of OperatorParseTree<LlamaLiteral, LlamaIdentifier>
+and AbstractTypeTree =
+    | AbstractTypeTree of Association<LlamaIdentifier, LlamaType> * Stack<Choice<LlamaLiteral, LlamaIdentifier> list>
+    member this.Append att =
+        match this, att with
+        | AbstractTypeTree (thisLlamas, thisCode), AbstractTypeTree (otherLlamas, otherCode) ->
+            AbstractTypeTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)
+    override this.ToString () = "AST\n" + (match this with AbstractTypeTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
+and AbstractSyntaxTree =
+    | AbstractSyntaxTree of Association<LlamaIdentifier, Llama> * Stack<CodeStatement>
+    member this.Append ast =
+        match this, ast with
+        | AbstractSyntaxTree (thisLlamas, thisCode), AbstractSyntaxTree (otherLlamas, otherCode) ->
+            AbstractSyntaxTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)
+    override this.ToString () = "AST\n" + (match this with AbstractSyntaxTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
+
+module AbstractSyntaxTree =
+    let Empty =
+        AbstractSyntaxTree (Association.Empty, Stack.Empty)
+
+module AbstractTypeTree =
+    let Empty =
+        AbstractTypeTree (Association.Empty, Stack.Empty)
