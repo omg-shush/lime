@@ -12,12 +12,13 @@ module SemanticAnalyzer =
             match e with
             | Nonterminal (Expression, [ e1; e2 ]) ->
                 (serializeExpression e1) @ (serializeExpression e2)
-            | Terminal (Expression, (_, lexeme)) -> [ lexeme ]
+            | Terminal (Expression, cpAndLexeme) -> [ cpAndLexeme ]
             | _ -> invalidArg "e" "Parse tree contains a non-expression"
 
         let prepareExpression =
             List.map (
-                fun (e: Lexeme) ->
+                fun (cp: CodePosition, e: Lexeme) ->
+                    cp,
                     match e with
                     | Identifier i -> LlamaName i |> Choice2Of2
                     | StringLiteral s -> LlamaString s |> Choice1Of2
@@ -34,7 +35,8 @@ module SemanticAnalyzer =
             match code with
             | Terminal (Expression, _) | Nonterminal (Expression, _) as exprTree ->
                 let flatExpr = exprTree |> serializeExpression |> prepareExpression
-                AbstractTypeTree (Association.Empty, Stack.Empty.Push flatExpr)
+                let cp = fst (List.last flatExpr)
+                AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
 
             | Nonterminal (Statement, [ exprOrBinding; _ ]) | Nonterminal (Statement, [ exprOrBinding ]) -> analyzeTypes exprOrBinding
 
@@ -44,16 +46,16 @@ module SemanticAnalyzer =
 
             | Nonterminal (TypeHint, [ _; typ; _ ]) ->
                 // WEE WOO WEE WOO using empty name to pass type up to stack frame of containing "definition"
-                AbstractTypeTree (Association.Empty.Put (LlamaName "") { typ = typFromTHint typ; def = AbstractTypeTree.Empty }, Stack.Empty)
+                AbstractTypeTree (CodePosition.Start, Association.Empty.Put (LlamaName "") { typ = typFromTHint typ; def = AbstractTypeTree.Empty }, Stack.Empty)
 
             | Nonterminal (Definition, [ tHint; _; blockOrStatement ])
             | Nonterminal (Definition, [ tHint; blockOrStatement ]) ->
                 let att = analyzeTypes blockOrStatement
                 // WEE WOO WEE WOO using empty name to pass type and definition up to stack frame of containing "binding"
-                let typ = match analyzeTypes tHint with AbstractTypeTree (llamas, _) -> (Option.get (llamas.Get (LlamaName ""))).typ // Extract type from "TypeHint" analysis
-                AbstractTypeTree (Association.Empty.Put (LlamaName "") { LlamaType.typ = typ; def = att }, Stack.Empty)
+                let typ = match analyzeTypes tHint with AbstractTypeTree (_, llamas, _) -> (Option.get (llamas.Get (LlamaName ""))).typ // Extract type from "TypeHint" analysis
+                AbstractTypeTree (CodePosition.Start, Association.Empty.Put (LlamaName "") { LlamaType.typ = typ; def = att }, Stack.Empty)
 
-            | Nonterminal (ImmutableBinding, [ lhs; Terminal (bindingType, _); def ]) | Nonterminal (MutableBinding, [ lhs; Terminal (bindingType, _); def ]) ->
+            | Nonterminal (ImmutableBinding, [ lhs; Terminal (bindingType, (cp, _)); def ]) | Nonterminal (MutableBinding, [ lhs; Terminal (bindingType, (cp, _)); def ]) ->
                 let name =
                     match lhs with
                     | Terminal (Expression, (_, Identifier name)) ->
@@ -61,15 +63,15 @@ module SemanticAnalyzer =
                     | Nonterminal (Expression, [ Nonterminal (Expression, [ Terminal (Expression, (_, Delimiter '(')); Terminal (Expression, (_, Operator op)) ]); Terminal (Expression, (_, Delimiter ')')) ]) ->
                         LlamaOperator op // matches (op) = <def>
                     | _ -> invalidArg "code" "Unknown lhs" // TODO pattern matching
-                let ast = match analyzeTypes def with AbstractTypeTree (singleBinding, _) -> singleBinding
-                let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
+                let ast = match analyzeTypes def with AbstractTypeTree (_, singleBinding, _) -> singleBinding
+                let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subcp, subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
                 let llamaBinding = {
                     typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
                     // Thunk code body of binding to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
-                    def = AbstractTypeTree (subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
+                    def = AbstractTypeTree (subcp, subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
                 }
                 let init = [ Choice2Of2 (LlamaName "unthunk"); Choice2Of2 (name) ]
-                AbstractTypeTree (Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
+                AbstractTypeTree (cp, Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
 
             | Nonterminal (Binding, [ bindingType ]) -> analyzeTypes bindingType
 
@@ -77,7 +79,7 @@ module SemanticAnalyzer =
 
         /// Given that all types have been parsed to the extent that we know how they behave within expressions,
         /// we now parse each expression into a LlamaExpression to complete the AbstractSyntaxTree
-        let rec analyzeExpressions (visibleOperations: Operation<LlamaIdentifier> list) (AbstractTypeTree (types, code): AbstractTypeTree) =
+        let rec analyzeExpressions (visibleOperations: Operation<LlamaIdentifier> list) (AbstractTypeTree (cp, types, code): AbstractTypeTree) =
             /// Returns a Operation Option. If some, add to the operator priority list; if none, ignore
             let getOp (kvpair: KeyValue<LlamaIdentifier, LlamaType>) =
                 match (kvpair.key, kvpair.value) with
@@ -106,7 +108,7 @@ module SemanticAnalyzer =
                 ) types.KeyValueSet
                 |> Association.Empty.PutAll
 
-            AbstractSyntaxTree (parsedTypes, parsedCode)
+            AbstractSyntaxTree (cp, parsedTypes, parsedCode)
 
         let att = code |> analyzeTypes
         //Logger.Log Info (att.ToString ()) controls

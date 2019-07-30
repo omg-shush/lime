@@ -144,7 +144,7 @@ module Preprocessor =
                 | '\n' -> cp.NextLine
                 | _ -> cp.NextChar
             (cp, c), nextCp
-        ) CodePosition.Start
+        ) { CodePosition.Start with file = controls.input }
         |> fst
         |> Stack.ofList
         |> preprocessCommentsIntoWhitespace

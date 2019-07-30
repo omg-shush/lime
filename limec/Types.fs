@@ -32,10 +32,10 @@ type Controls =
     }
 
 type CodePosition =
-    { line: int; character: int }
+    { file: string; line: int; character: int }
     override this.ToString () =
-        sprintf "@ line %3d, char %3d: " this.line this.character
-    static member Start = { line = 1; character = 1 }
+        sprintf "@ file %s, line %3d, char %3d: " this.file this.line this.character
+    static member Start = { file = "unknown file"; line = 1; character = 1 }
     member this.PrevChar = { this with character = this.character - 1 }
     member this.NextChar = { this with character = this.character + 1 }
     member this.NextLine = { this with line = this.line + 1; character = CodePosition.Start.character }
@@ -108,19 +108,19 @@ and LlamaLiteral =
     | LlamaBool of bool
 and LlamaExpression = LlamaExpression of OperatorParseTree<LlamaLiteral, LlamaIdentifier>
 and AbstractTypeTree =
-    | AbstractTypeTree of Association<LlamaIdentifier, LlamaType> * Stack<Choice<LlamaLiteral, LlamaIdentifier> list>
+    | AbstractTypeTree of CodePosition * Association<LlamaIdentifier, LlamaType> * Stack<Choice<LlamaLiteral, LlamaIdentifier> list>
     member this.Append att =
         match this, att with
-        | AbstractTypeTree (thisLlamas, thisCode), AbstractTypeTree (otherLlamas, otherCode) ->
-            AbstractTypeTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)
-    override this.ToString () = "AST\n" + (match this with AbstractTypeTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
+        | AbstractTypeTree (thisCp, thisLlamas, thisCode), AbstractTypeTree (otherCp, otherLlamas, otherCode) ->
+            AbstractTypeTree (thisCp, thisLlamas.Append otherLlamas, thisCode.Append otherCode)
+    override this.ToString () = "AST\n" + (match this with AbstractTypeTree (cp, assoc, code) -> cp.ToString() + assoc.ToString () + "\n CODE\n" + code.ToString ())
 and AbstractSyntaxTree =
-    | AbstractSyntaxTree of Association<LlamaIdentifier, Llama> * LlamaExpression
+    | AbstractSyntaxTree of CodePosition * Association<LlamaIdentifier, Llama> * LlamaExpression
     (*member this.Append ast =
         match this, ast with
         | AbstractSyntaxTree (thisLlamas, thisCode), AbstractSyntaxTree (otherLlamas, otherCode) ->
             AbstractSyntaxTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)*)
-    override this.ToString () = "AST\n" + (match this with AbstractSyntaxTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
+    override this.ToString () = "AST\n" + (match this with AbstractSyntaxTree (cp, assoc, code) -> cp.ToString() + assoc.ToString () + "\n CODE\n" + code.ToString ())
 
 (*module AbstractSyntaxTree =
     let Empty =
@@ -128,4 +128,4 @@ and AbstractSyntaxTree =
 
 module AbstractTypeTree =
     let Empty =
-        AbstractTypeTree (Association.Empty, Stack.Empty)
+        AbstractTypeTree (CodePosition.Start, Association.Empty, Stack.Empty)
