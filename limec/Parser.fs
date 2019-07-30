@@ -7,6 +7,7 @@ module Parser =
             [
                 Expression,         [ Expression; Expression ]
                 Statement,          [ Expression; Complete ]
+                Statement,          [ Binding ]
                 StatementList,      [ Statement; Statement ]
                 StatementList,      [ StatementList; Statement ]
                 Block,              [ DelimitBeginBlock; Statement; DelimitEndBlock ]
@@ -18,8 +19,6 @@ module Parser =
                 MutableBinding,     [ Expression; OperationColon; Definition ]
                 Binding,            [ ImmutableBinding ]
                 Binding,            [ MutableBinding ]
-                BindingList,        [ Binding ]
-                BindingList,        [ BindingList; BindingList ]
             ]
             |> ShiftReduceParser.ofRuleList
         //printfn "%A" (cfgParser.grammar.ToString ())

@@ -22,7 +22,7 @@ module SemanticAnalyzer =
                     | Identifier i -> LlamaName i |> Choice2Of2
                     | StringLiteral s -> LlamaString s |> Choice1Of2
                     | CharLiteral c -> LlamaChar c |> Choice1Of2
-                    | Delimiter c -> invalidArg "code" ("Unexpected delimiter " + (c.ToString ()) + "in expression")
+                    | Delimiter c -> LlamaOperator (c.ToString ()) |> Choice2Of2
                     | Operator o -> LlamaOperator o |> Choice2Of2
                     | Numerical n -> (* TODO *) LlamaInt 42L |> Choice1Of2
                     | _ -> invalidArg "code" "Unexpected lexeme in expression"
@@ -36,7 +36,7 @@ module SemanticAnalyzer =
                 let flatExpr = exprTree |> serializeExpression |> prepareExpression
                 AbstractTypeTree (Association.Empty, Stack.Empty.Push flatExpr)
 
-            | Nonterminal (Statement, [ e; _ ]) -> analyzeTypes e
+            | Nonterminal (Statement, [ exprOrBinding; _ ]) | Nonterminal (Statement, [ exprOrBinding ]) -> analyzeTypes exprOrBinding
 
             | Nonterminal (StatementList, [ stORstl; lastStatement ]) -> (analyzeTypes stORstl).Append (analyzeTypes lastStatement)
 
@@ -65,13 +65,13 @@ module SemanticAnalyzer =
                 let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
                 let llamaBinding = {
                     typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
-                    def = AbstractTypeTree (subtyps, subcode.Bottom.Push (Choice2Of2 (LlamaName "thunk") :: subcode.Top)) // Thunk it to prevent evaluating until actual position in code reached
+                    // Thunk it to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
+                    def = AbstractTypeTree (subtyps, subcode.Bottom.Push ([ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ] @ subcode.Top @ [ Choice2Of2 (LlamaOperator ")") ]))
                 }
                 let init = [ Choice2Of2 (LlamaName "unthunk"); Choice2Of2 (name) ]
                 AbstractTypeTree (Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
-        
-            | Nonterminal (Binding, [ b ]) | Nonterminal (BindingList, [ b ]) -> analyzeTypes b
-            | Nonterminal (BindingList, [ bs1; bs2 ]) -> (analyzeTypes bs1).Append (analyzeTypes bs2)
+
+            | Nonterminal (Binding, [ bindingType ]) -> analyzeTypes bindingType
 
             | _ -> invalidArg "code" "Improper parse tree"
 
@@ -101,7 +101,10 @@ module SemanticAnalyzer =
 
             AbstractSyntaxTree.Empty
 
-        code |> analyzeTypes |> analyzeExpressions [ Infix (LlamaOperator "->") ]
+        let att = code |> analyzeTypes
+        Logger.Log Info (att.ToString ()) controls
+        Logger.Log Info "----------------" controls
+        att|> analyzeExpressions [ Infix (LlamaOperator "->") ]
 
     (*let rec Analyze (ParsedCode tree: ParsedCode) (controls: Controls) : AST =
         let getASTFromParseTrees ptlist =

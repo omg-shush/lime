@@ -57,7 +57,6 @@ type Lexeme =
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
 type GrammarElement =
-    | BindingList
     | Binding
     | ImmutableBinding
     | MutableBinding

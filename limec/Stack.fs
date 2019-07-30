@@ -7,7 +7,7 @@ type Stack<'T> =
 
     override this.ToString () =
         this.Array
-        |> Array.map (fun x -> x.ToString ())
+        |> Array.map (fun x -> sprintf "%A" x)
         |> String.concat "\n|> "
 
     member this.Bottom : 'T Stack =
