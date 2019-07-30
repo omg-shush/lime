@@ -53,7 +53,7 @@ type ShiftReduceParser<'element when 'element: comparison> =
 
                     // First, we shift
                     let parseStack' = parseStack.Push (Terminal elementAndToken)
-                    // Then, we reduce
+                    // Then, we reduce (multiple times if possible!)
                     let rec reduceUntilCan't stack =
                         match tryReduce stack this.grammar Stack.Empty with
                         | Some reducedStack -> reduceUntilCan't reducedStack

@@ -14,7 +14,7 @@ module Parser =
                 Block,              [ DelimitBeginBlock; StatementList; DelimitEndBlock ]
                 TypeHint,           [ DelimitBeginType; Expression; DelimitEndType ]
                 Definition,         [ TypeHint; Complete; Block ]
-                Definition,         [ TypeHint; Statement ]
+                Definition,         [ TypeHint; Statement ] // Potential bug/feature: statement can be another binding! wack?
                 ImmutableBinding,   [ Expression; OperationEquals; Definition ]
                 MutableBinding,     [ Expression; OperationColon; Definition ]
                 Binding,            [ ImmutableBinding ]

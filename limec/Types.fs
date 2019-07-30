@@ -106,9 +106,6 @@ and LlamaLiteral =
     | LlamaInt of int64
     | LlamaDouble of double
     | LlamaBool of bool
-and CodeStatement =
-    | CodeBlock of AbstractSyntaxTree
-    | CodeLine of LlamaExpression
 and LlamaExpression = LlamaExpression of OperatorParseTree<LlamaLiteral, LlamaIdentifier>
 and AbstractTypeTree =
     | AbstractTypeTree of Association<LlamaIdentifier, LlamaType> * Stack<Choice<LlamaLiteral, LlamaIdentifier> list>
@@ -118,16 +115,16 @@ and AbstractTypeTree =
             AbstractTypeTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)
     override this.ToString () = "AST\n" + (match this with AbstractTypeTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
 and AbstractSyntaxTree =
-    | AbstractSyntaxTree of Association<LlamaIdentifier, Llama> * Stack<CodeStatement>
-    member this.Append ast =
+    | AbstractSyntaxTree of Association<LlamaIdentifier, Llama> * LlamaExpression
+    (*member this.Append ast =
         match this, ast with
         | AbstractSyntaxTree (thisLlamas, thisCode), AbstractSyntaxTree (otherLlamas, otherCode) ->
-            AbstractSyntaxTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)
+            AbstractSyntaxTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)*)
     override this.ToString () = "AST\n" + (match this with AbstractSyntaxTree (assoc, code) -> assoc.ToString () + "\n CODE\n" + code.ToString ())
 
-module AbstractSyntaxTree =
+(*module AbstractSyntaxTree =
     let Empty =
-        AbstractSyntaxTree (Association.Empty, Stack.Empty)
+        AbstractSyntaxTree (Association.Empty, OperatorParseTree)*)
 
 module AbstractTypeTree =
     let Empty =

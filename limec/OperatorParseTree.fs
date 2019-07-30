@@ -14,6 +14,8 @@ type Operation<'operation when 'operation: equality> =
     | Circumfix of 'operation * 'operation
     | Circumliteral of 'operation * 'operation
     | Adjacent of 'operation
+    | RemainingAdjacent of 'operation
+    | Null of 'operation
 
     member this.GetOp =
         match this with
@@ -246,6 +248,41 @@ module OperatorParseTree =
 
                     // Run through workingInput, looking for instances of valid adjacencies
                     parseListForAdjacentOperation workingInput
+
+                | RemainingAdjacent nextOperation ->
+                    // Recursively reads through the workingList and substitutes each instance of any two adjacent items
+                    // with nextOperation
+                    let rec parseListForRemainingAdjacentOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
+                        if (workingList.Length < 2) then
+                            workingList // Too short to contain an adjacent pair of items
+                        else
+                            // Construct subtree with this operation at the root
+                            let parsedSubtree =
+                                {
+                                    // Insert adjacency operation data
+                                    data = Operation nextOperation;
+                                    // Add left and right subtrees as children of this operation
+                                    children = workingList.[0] :: (List.singleton workingList.[1])
+                                }
+                            // Append new subtree to rest of list and re-parse the entire thing
+                            parseListForRemainingAdjacentOperation (parsedSubtree :: workingList.Tail.Tail)
+
+                    // Run through workingInput, looking for instances of any adjacencies
+                    parseListForRemainingAdjacentOperation workingInput
+
+                | Null nextOperation ->
+                    // Recursively reads through the workingList and Danny Deleto's each instance of the Null operation
+                    let rec parseListForNullOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
+                        if (workingList.Length < 1) then
+                            workingList // Empty, cannot contain a Null operation
+                        else
+                            match workingList.[0].data with
+                            | Operation op when op = nextOperation ->
+                                parseListForNullOperation workingList.Tail // Delete the null op
+                            | _ -> workingList.Head :: (parseListForNullOperation workingList.Tail) // Keep this subtree, and search the rest of the expression
+                    
+                    // Run through workingInput, looking for instances of this Null operation
+                    parseListForNullOperation workingInput
 
         ) atomizedInput opPriority
 

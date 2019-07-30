@@ -12,7 +12,7 @@ module SemanticAnalyzer =
             match e with
             | Nonterminal (Expression, [ e1; e2 ]) ->
                 (serializeExpression e1) @ (serializeExpression e2)
-            | Terminal (Expression, (cp, lexeme)) -> [ lexeme ]
+            | Terminal (Expression, (_, lexeme)) -> [ lexeme ]
             | _ -> invalidArg "e" "Parse tree contains a non-expression"
 
         let prepareExpression =
@@ -24,7 +24,7 @@ module SemanticAnalyzer =
                     | CharLiteral c -> LlamaChar c |> Choice1Of2
                     | Delimiter c -> LlamaOperator (c.ToString ()) |> Choice2Of2
                     | Operator o -> LlamaOperator o |> Choice2Of2
-                    | Numerical n -> (* TODO *) LlamaInt 42L |> Choice1Of2
+                    | Numerical n -> (* TODO actually parse the number into an int or float *) LlamaInt 42L |> Choice1Of2
                     | _ -> invalidArg "code" "Unexpected lexeme in expression"
             )
 
@@ -65,8 +65,8 @@ module SemanticAnalyzer =
                 let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
                 let llamaBinding = {
                     typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
-                    // Thunk it to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
-                    def = AbstractTypeTree (subtyps, subcode.Bottom.Push ([ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ] @ subcode.Top @ [ Choice2Of2 (LlamaOperator ")") ]))
+                    // Thunk code body of binding to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
+                    def = AbstractTypeTree (subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
                 }
                 let init = [ Choice2Of2 (LlamaName "unthunk"); Choice2Of2 (name) ]
                 AbstractTypeTree (Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
@@ -81,7 +81,7 @@ module SemanticAnalyzer =
             /// Returns a Operation Option. If some, add to the operator priority list; if none, ignore
             let getOp (kvpair: KeyValue<LlamaIdentifier, LlamaType>) =
                 match (kvpair.key, kvpair.value) with
-                | LlamaOperator _, { typ = typ; def = _ } | LlamaName _, { typ = typ; def = _ } when List.contains (LlamaName "operator") typ ->
+                | LlamaOperator _, { typ = typ; def = _ } | LlamaName _, { typ = typ; def = _ } when List.contains (LlamaName "operator") typ && not (List.contains (LlamaName "override") typ) ->
                     let OpType =
                         if List.contains (LlamaName "infix") typ then Infix
                         elif List.contains (LlamaName "prefix") typ then Prefix
@@ -91,87 +91,36 @@ module SemanticAnalyzer =
                 | _ -> None
 
             // First, find all operations defined in this scope
-            let theseOps = List.choose getOp types.KeyValueSet
+            let newOps = List.choose getOp types.KeyValueSet
 
             // Then, append them onto the previously defined ops, giving the closest ones highest precedence (* TODO they should really have more consistent sorting *)
-            let allOps = theseOps @ visibleOperations
+            let visibleOps = newOps @ visibleOperations
 
             // Now, parse the expressions at this scope level
+            let parsedCode = List.concat code.List |> OperatorParseTree.Parse visibleOps |> LlamaExpression
 
+            // Next, recurse over all sub-bindings
+            let parsedTypes =
+                List.map (fun (kvpair: KeyValue<LlamaIdentifier, LlamaType>) ->
+                    kvpair.key, { Llama.typ = kvpair.value.typ; def = analyzeExpressions visibleOps kvpair.value.def } // K, V tuple
+                ) types.KeyValueSet
+                |> Association.Empty.PutAll
 
-            AbstractSyntaxTree.Empty
+            AbstractSyntaxTree (parsedTypes, parsedCode)
 
         let att = code |> analyzeTypes
-        Logger.Log Info (att.ToString ()) controls
-        Logger.Log Info "----------------" controls
-        att|> analyzeExpressions [ Infix (LlamaOperator "->") ]
+        //Logger.Log Info (att.ToString ()) controls
+        //Logger.Log Info "----------------" controls
 
-    (*let rec Analyze (ParsedCode tree: ParsedCode) (controls: Controls) : AST =
-        let getASTFromParseTrees ptlist =
-            List.fold (
-                fun (ast: AST) statement ->
-                    ast.Append (Analyze (ParsedCode statement) controls)
-            ) ptlist
+        let builtinOperations = [
+            Circumfix (LlamaOperator "(", LlamaOperator ")")
 
-        let getLlamaFromBinding lhs rhs =
-            let name =
-                match lhs with
-                | Terminal (Expression, (cp, Identifier name)) -> LlamaName name
-                | _ -> invalidArg "tree" "lhs is not an identifier TODO"
-            let llama =
-                match rhs with // rhs is the children of a Definition
-                | (Nonterminal (TypeHint, [ _; Terminal (Expression, (cp, Identifier typ)); _ ])) :: value ->
-                    let def =
-                        match value with
-                        | [ Terminal (Complete, _); Nonterminal (Block, statements) ] ->
-                            getASTFromParseTrees statements
-                        | [ Nonterminal (Statement, [ statement; Terminal (Complete, _) ]) ] ->
-                            Analyze (ParsedCode statement) controls
-                        | _ -> invalidArg "tree" "improper definition"
+            Prefix (LlamaName "thunk")
+            Prefix (LlamaName "unthunk")
 
-                    { typ = [ LlamaName typ ]; def = def }
-                | _ -> invalidArg "tree" "rhs's type hint is not an identifier TODO"
-            name, llama
+            Infix (LlamaOperator "->")
 
-        let getLlamaFromExpression expr =
-            () // TODO
+            RemainingAdjacent (LlamaOperator "next")
+        ]
 
-        match tree with
-        // Single binding cases
-        | Nonterminal (Binding, [
-            Nonterminal (
-                ImmutableBinding, [ lhs; _; Nonterminal (Definition, rhs) ]
-            )
-        ]) ->
-            let name, llama = getLlamaFromBinding lhs rhs
-            let llama = { llama with typ = (LlamaName "immutable") :: llama.typ }
-            AST (Association.Empty.Put name llama, Stack.Empty)
-
-        | Nonterminal (Binding, [
-            Nonterminal (
-                MutableBinding, [ lhs; _; Nonterminal (Definition, rhs) ]
-            )
-        ]) ->
-            let name, llama = getLlamaFromBinding lhs rhs
-            AST (Association.Empty.Put name llama, Stack.Empty)
-
-        // Recursive binding lists
-
-        | Nonterminal (BindingList, [
-            Nonterminal (BindingList, tailBindings)
-            binding // Either a MutableBinding or ImmutableBinding
-        ]) ->
-            let headAST = Analyze (ParsedCode binding) controls
-            let tailAST = getASTFromParseTrees tailBindings
-            tailAST.Append headAST
-
-        // Expressions
-
-        | Terminal (Expression, expr) ->
-            AST Association.Empty // TODO
-
-        | Nonterminal (Expression, [ Nonterminal (Expression, tail); Terminal (Expression, head) ]) ->
-            AST Association.Empty // TODO
-
-        | _ -> AST Association.Empty // TODO
-        *)
+        analyzeExpressions builtinOperations att
