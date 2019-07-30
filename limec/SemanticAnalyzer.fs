@@ -13,6 +13,7 @@ module SemanticAnalyzer =
             | Nonterminal (Expression, [ e1; e2 ]) ->
                 (serializeExpression e1) @ (serializeExpression e2)
             | Terminal (Expression, (cp, lexeme)) -> [ lexeme ]
+            | _ -> invalidArg "e" "Parse tree contains a non-expression"
 
         let prepareExpression =
             List.map (
@@ -59,11 +60,15 @@ module SemanticAnalyzer =
                         LlamaName name // matches name = <def>
                     | Nonterminal (Expression, [ Nonterminal (Expression, [ Terminal (Expression, (_, Delimiter '(')); Terminal (Expression, (_, Operator op)) ]); Terminal (Expression, (_, Delimiter ')')) ]) ->
                         LlamaOperator op // matches (op) = <def>
-                    | _ -> invalidArg "code" "Unknown lhs"
+                    | _ -> invalidArg "code" "Unknown lhs" // TODO pattern matching
                 let ast = match analyzeTypes def with AbstractTypeTree (singleBinding, _) -> singleBinding
-                let llama = Option.get (ast.Get (LlamaName ""))
-                let llama = { llama with typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llama.typ } // Add on extra type based on mutability of binding
-                AbstractTypeTree (Association.Empty.Put name llama, Stack.Empty)
+                let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
+                let llamaBinding = {
+                    typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
+                    def = AbstractTypeTree (subtyps, subcode.Bottom.Push (Choice2Of2 (LlamaName "thunk") :: subcode.Top)) // Thunk it to prevent evaluating until actual position in code reached
+                }
+                let init = [ Choice2Of2 (LlamaName "unthunk"); Choice2Of2 (name) ]
+                AbstractTypeTree (Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
         
             | Nonterminal (Binding, [ b ]) | Nonterminal (BindingList, [ b ]) -> analyzeTypes b
             | Nonterminal (BindingList, [ bs1; bs2 ]) -> (analyzeTypes bs1).Append (analyzeTypes bs2)

@@ -40,4 +40,6 @@ answer = 0xf00f_CAFE
 (*) = [ subroutine ] 5
 
 Entry = [ subroutine ]
-    "Hello world!" -> PrintLine
+    msg = [ string ] "Hello world!"
+    msg := "Hello world!"
+    msg -> PrintLine
