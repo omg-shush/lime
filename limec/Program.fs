@@ -42,4 +42,7 @@ module Compiler =
         let ast = SemanticAnalyzer.Analyze parsed controls
         Logger.Log Info (ast.ToString ()) controls
 
+        // TODO check for target type
+        Interpreter.Interpret ast |> ignore
+        
         0

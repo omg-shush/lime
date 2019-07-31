@@ -37,6 +37,8 @@ answer = 0xf00f_CAFE
 
 // Actually legitimate test code
 
+Entry
+
 (*) = [ subroutine ] 5
 
 Entry = [ subroutine ]
@@ -44,5 +46,5 @@ Entry = [ subroutine ]
     x = [ string ] "x"
     msg
     -> PrintLine
-    msg -> (PrintLine)
+    x -> (PrintLine)
     
