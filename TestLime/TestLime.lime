@@ -37,9 +37,9 @@ answer = 0xf00f_CAFE
 
 // Actually legitimate test code
 
-Entry
+//Entry
 
-(*) = [ subroutine ] 5
+//(*) = [ subroutine ] 5
 
 Entry = [ subroutine ]
     msg = [ string ] "Hello world!"
@@ -48,3 +48,9 @@ Entry = [ subroutine ]
     -> PrintLine
     x -> (PrintLine)
     
+Entry
+Entry
+
+//hi = [ string ] "Hello, world!"
+//hi -> PrintLine
+//hi -> PrintLine

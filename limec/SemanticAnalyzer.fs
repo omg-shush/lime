@@ -21,7 +21,7 @@ module SemanticAnalyzer =
                     cp,
                     match e with
                     | Identifier i -> LlamaName i |> Choice2Of2
-                    | StringLiteral s -> LlamaString s |> Choice1Of2
+                    | StringLiteral s -> LlamaString (s.Substring (1, s.Length - 2)) |> Choice1Of2 // Remove double quotes
                     | CharLiteral c -> LlamaChar c |> Choice1Of2
                     | Delimiter c -> LlamaOperator (c.ToString ()) |> Choice2Of2
                     | Operator o -> LlamaOperator o |> Choice2Of2
@@ -68,9 +68,11 @@ module SemanticAnalyzer =
                 let llamaBinding = {
                     typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
                     // Thunk code body of binding to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
-                    def = AbstractTypeTree (subcp, subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaName "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
+                    //def = AbstractTypeTree (subcp, subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaOperator "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
+                    def = AbstractTypeTree (subcp, subtyps, subcode)
                 }
-                let init = [ Choice2Of2 (LlamaName "unthunk"); Choice2Of2 (name) ]
+                //let init = [ Choice2Of2 (LlamaOperator "unthunk"); Choice2Of2 (name) ]
+                let init = [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 name ]
                 AbstractTypeTree (cp, Association.Empty.Put name llamaBinding, Stack.Empty.Push init)
 
             | Nonterminal (Binding, [ bindingType ]) -> analyzeTypes bindingType
@@ -117,8 +119,9 @@ module SemanticAnalyzer =
         let builtinOperations = [
             Circumfix (LlamaOperator "(", LlamaOperator ")")
 
-            Prefix (LlamaName "thunk")
-            Prefix (LlamaName "unthunk")
+            //Prefix (LlamaName "thunk")
+            //Prefix (LlamaName "unthunk")
+            Prefix (LlamaOperator "$init")
 
             Infix (LlamaOperator "->")
 
