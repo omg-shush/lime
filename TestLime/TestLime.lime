@@ -41,11 +41,15 @@ answer = 0xf00f_CAFE
 
 //(*) = [ subroutine ] 5
 
+//PrintTwice = [ procedure(x = string -> unit) ]
+
 Entry = [ subroutine ]
     msg = [ string ] "Hello world!"
-    x = [ string ] "x"
+    msg2 = [ string ] "Toodles!"
     msg
     -> PrintLine
+    msg2 -> PrintLine
+    x = [ string ] ":)"
     x -> (PrintLine)
     
 Entry

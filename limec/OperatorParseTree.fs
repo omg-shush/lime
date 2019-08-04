@@ -19,9 +19,8 @@ type Operation<'operation when 'operation: equality> =
 
     member this.GetOp =
         match this with
-        | Circumfix _ -> Unchecked.defaultof<'operation>
-        | Circumliteral _ -> Unchecked.defaultof<'operation>
         | Prefix op | Postfix op | Infix op | Adjacent op -> op
+        | _ -> Unchecked.defaultof<'operation>
 
 /// Carries the data associated with a single parse tree node;
 /// either an atom within the alphabet, or an operation over the alphabet
