@@ -27,7 +27,7 @@ type Regex =
     /// Finds the smallest number of characters that matches, then extends it until the string
     /// stops matching, and then stops.
     /// </para><para>
-    /// Returns the list of characters matching the regex, followed by the remaining input.
+    /// Returns the list of characters matching the regex.
     /// </para></summary>
     member this.MatchEarlyLongest (input: char seq) : char list = //* char seq =
         // Turns [1, 2, 3, ...] into [ [], [1], [1, 2], [1, 2, 3], ... ]

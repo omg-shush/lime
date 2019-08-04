@@ -67,8 +67,6 @@ module SemanticAnalyzer =
                 let { LlamaType.typ = llamaTyp; def = AbstractTypeTree (subcp, subtyps, subcode) } = Option.get (ast.Get (LlamaName ""))
                 let llamaBinding = {
                     typ = (LlamaName (if bindingType = OperationEquals then "immutable" else "mutable")) :: llamaTyp // Add on extra type based on mutability of binding
-                    // Thunk code body of binding to prevent evaluating the binding until actual declaration in code reached; allows definition to reference lexical state
-                    //def = AbstractTypeTree (subcp, subtyps, ((Stack.Empty.Push [ Choice2Of2 (LlamaOperator "thunk"); Choice2Of2 (LlamaOperator "(") ]).Append subcode).Push [ Choice2Of2 (LlamaOperator ")") ])
                     def = AbstractTypeTree (subcp, subtyps, subcode)
                 }
                 //let init = [ Choice2Of2 (LlamaOperator "unthunk"); Choice2Of2 (name) ]
@@ -113,15 +111,15 @@ module SemanticAnalyzer =
             AbstractSyntaxTree (cp, parsedTypes, parsedCode)
 
         let att = code |> analyzeTypes
-        //Logger.Log Info (att.ToString ()) controls
-        //Logger.Log Info "----------------" controls
 
         let builtinOperations = [
             Circumfix (LlamaOperator "(", LlamaOperator ")")
 
-            //Prefix (LlamaName "thunk")
-            //Prefix (LlamaName "unthunk")
             Prefix (LlamaOperator "$init")
+
+            Infix (LlamaOperator ".")
+
+            Postfix (LlamaOperator "!")
 
             Infix (LlamaOperator "->")
 

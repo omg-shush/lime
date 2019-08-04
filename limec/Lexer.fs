@@ -13,7 +13,8 @@ module Lexer =
 
         let recognizeSpaces = Regex.ofString " *"
         let recognizeIdentifier = Regex.ofString "[abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ][abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_0123456789]*"
-        let recognizeString = Regex.ofString "\"\"|\"(<\">| |\t|\\\")*<\\\\>\""
+        let recognizeString = Regex.ofString "\"\"|\"(<\">| |\t|\\\")*(<\\\\>| |\t)\""
+        //printf "!!!!!!! %A" (recognizeString.MatchEarlyLongest [ '"'; '$'; '>'; ' '; '"' ])
         let recognizeChar = Regex.ofString "'(<'>| |\t|\\')*'"
         let recognizeDelimiter = Regex.ofString @"[\[\]\(\)\{\}]"
         // Options for a numerical: (_ for spacers anywhere where a digit is expected)
@@ -23,7 +24,7 @@ module Lexer =
         // (0y/0b binary digits) or (binary digits)
         // + or - digits . digits (fF or dD or nothing)
         let regexDec = "(+|-)?[0123456789][_0123456789]*[uU]?"
-        let regexHex = "0[hx][0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*|[0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*[hH]"
+        let regexHex = "0[hx][0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*"// TODO hex of form "f00fH" are also identifiers, disabling for now "|[0123456789abcdefABCDEF][_0123456789abcdefABCDEF]*[hH]"
         let regexOct = "0[cq][01234567][_01234567]*|[01234567][_01234567]*[cC]"
         let regexBin = "0[by][01][_01]*|[01][_01]*[bB]"
         let regexFlo = "(+|-)?[0123456789][_0123456789]*(.[0123456789][_0123456789]*)?([fF]|[dD])?"

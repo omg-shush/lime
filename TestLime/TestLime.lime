@@ -45,15 +45,26 @@ answer = 0xf00f_CAFE
 
 Entry = [ subroutine ]
     msg = [ string ] "Hello world!"
-    msg2 = [ string ] "Toodles!"
+    msg2 = [ string ] "$> Toodles!"
     msg
-    -> PrintLine
-    msg2 -> PrintLine
-    x = [ string ] ":)"
-    x -> (PrintLine)
+    -> dotnet.WriteLine
+    msg2 -> dotnet. WriteLine
+    ":)" -> msg
+    msg -> (dotnet.WriteLine)
     
-Entry
-Entry
+Entry!
+Entry!
+
+"" -> dotnet.WriteLine
+
+Echo = [ subroutine ]
+    prompt = [ string ] "$> "
+    prompt -> dotnet.Write
+    msg = [ string ] dotnet.ReadLine!
+    msg -> dotnet.WriteLine
+    Echo!
+
+Echo!
 
 //hi = [ string ] "Hello, world!"
 //hi -> PrintLine
