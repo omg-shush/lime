@@ -58,8 +58,6 @@ type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
 type GrammarElement =
     | Binding
-    | ImmutableBinding
-    | MutableBinding
     | OperationEquals
     | OperationColon
     | DelimitBeginType
@@ -67,12 +65,8 @@ type GrammarElement =
     | TypeHint
     | DelimitBeginBlock
     | DelimitEndBlock
-    | Block
-    | Definition
     | Expression
-    | Statement
-    | StatementList
-    | Complete
+    | ComplexExpression
 
 type ParsedCode = 
     | ParsedCode of ParseTree<GrammarElement, CodePosition * Lexeme>

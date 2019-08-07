@@ -59,7 +59,8 @@ Entry!
 
 Echo = [ subroutine ]
     prompt = [ string ] "$> "
-    prompt -> dotnet.Write
+        prompt
+    -> dotnet.Write
     msg = [ string ] dotnet.ReadLine!
     msg -> dotnet.WriteLine
     Echo!

@@ -38,6 +38,20 @@ module SemanticAnalyzer =
                 let cp = fst (List.last flatExpr)
                 AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
 
+            | Nonterminal (TypeHint, [ _; typ; _ ]) ->
+                // WEE WOO WEE WOO using empty name to pass type up to stack frame of containing "complex expression"
+                AbstractTypeTree (CodePosition.Start, Association.Empty.Put (LlamaName "") { typ = typFromTHint typ; def = AbstractTypeTree.Empty }, Stack.Empty)
+
+            | Nonterminal (ComplexExpression, [ TypeHint ])
+
+            | _ -> invalidArg "code" "Improper parse tree"
+
+            (*match code with
+            | Terminal (Expression, _) | Nonterminal (Expression, _) as exprTree ->
+                let flatExpr = exprTree |> serializeExpression |> prepareExpression
+                let cp = fst (List.last flatExpr)
+                AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
+
             | Nonterminal (Statement, [ exprOrBinding; _ ]) | Nonterminal (Statement, [ exprOrBinding ]) -> analyzeTypes exprOrBinding
 
             | Nonterminal (StatementList, [ stORstl; lastStatement ]) -> (analyzeTypes stORstl).Append (analyzeTypes lastStatement)
@@ -76,7 +90,7 @@ module SemanticAnalyzer =
             | Nonterminal (Binding, [ bindingType ]) -> analyzeTypes bindingType
 
             | _ -> invalidArg "code" "Improper parse tree"
-
+            *)
         /// Given that all types have been parsed to the extent that we know how they behave within expressions,
         /// we now parse each expression into a LlamaExpression to complete the AbstractSyntaxTree
         let rec analyzeExpressions (visibleOperations: Operation<LlamaIdentifier> list) (AbstractTypeTree (cp, types, code): AbstractTypeTree) =
