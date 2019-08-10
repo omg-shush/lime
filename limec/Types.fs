@@ -10,7 +10,7 @@ type LogLevel =
     | Warning
     | Error
 
-type Target =
+type Target = // TODO: add "interpreter"
     | Il
     | Exe
 
@@ -22,7 +22,7 @@ type Verbosity =
     | Verbose
     | Terse
 
-type Controls =
+type Controls = // TODO: rename "parameters"
     {
         input: string;
         output: string;
@@ -123,3 +123,4 @@ and AbstractSyntaxTree =
 module AbstractTypeTree =
     let Empty =
         AbstractTypeTree (CodePosition.Start, Association.Empty, Stack.Empty)
+    let DefaultBinding = LlamaName "$"

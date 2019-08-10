@@ -38,13 +38,63 @@ module SemanticAnalyzer =
                 let cp = fst (List.last flatExpr)
                 AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
 
+            | Nonterminal (ComplexExpression, [ Nonterminal (Expression, _) as expr1; Nonterminal (ComplexExpression, _) as expr2 ])
+            | Nonterminal (ComplexExpression, [ Nonterminal (ComplexExpression, _) as expr1; Nonterminal (ComplexExpression, _) as expr2 ])
+            | Nonterminal (ComplexExpression, [ Nonterminal (ComplexExpression, _) as expr1; Nonterminal (Expression, _) as expr2 ]) ->
+                let att1 = analyzeTypes expr1
+                let att2 = analyzeTypes expr2
+                att1.Append att2
+
             | Nonterminal (TypeHint, [ _; typ; _ ]) ->
                 // WEE WOO WEE WOO using empty name to pass type up to stack frame of containing "complex expression"
-                AbstractTypeTree (CodePosition.Start, Association.Empty.Put (LlamaName "") { typ = typFromTHint typ; def = AbstractTypeTree.Empty }, Stack.Empty)
+                //AbstractTypeTree (CodePosition.Start, Association.Empty.Put (LlamaName "") { typ = typFromTHint typ; def = AbstractTypeTree.Empty }, Stack.Empty)
+                invalidArg "code" "Type hint is lonely! Not associated with any expression"
 
-            | Nonterminal (ComplexExpression, [ TypeHint ])
+            // Returns an ATT that evaluates to the contained subexpression
+            | Nonterminal (ComplexExpression, [ Nonterminal (TypeHint, _) as typeHint; cexpr ]) ->
+                // First, analyze the child (complex) expression
+                let (AbstractTypeTree (cp, _, _)) as analyzedCexpr = analyzeTypes cexpr
+                // Then, wrap it in another ATT to store the type hint, which will evaluate to the cexpr being hinted at
+                AbstractTypeTree (
+                    cp,
+                    Association.Empty.Put AbstractTypeTree.DefaultBinding { typ = typFromTHint typeHint; def = analyzedCexpr },
+                    Stack.Empty.Push [ Choice2Of2 AbstractTypeTree.DefaultBinding ]
+                )
 
-            | _ -> invalidArg "code" "Improper parse tree"
+            // Returns an ATT with no code, containing only binding(s) from the lhs to the rhs
+            | Nonterminal (Binding, [ lhs; bindingType; rhs ]) ->
+                // TODO pattern matching
+                // TODO operator bindings
+                let cp, id = (match lhs with Terminal (Expression, (cp, Identifier id)) -> cp, LlamaName id | _ -> To.Do())
+                let analyzedRhs = analyzeTypes rhs
+                let initialType =
+                    match bindingType with
+                    | Terminal (Expression, (_, Operator "=")) -> [ LlamaName "immutable" ]
+                    | Terminal (Expression, (_, Operator ":")) -> [ LlamaName "mutable" ] // TODO do both types need to exist?
+                    | _ -> invalidArg "code" "bad binding operator"
+                AbstractTypeTree (
+                    cp,
+                    // Leave type as largely unknown for now, type checker will fix
+                    Association.Empty.Put id { typ = initialType; def = analyzedRhs },
+                    Stack.Empty
+                )
+
+            // Returns an ATT equal to the ATT of the expr, but extended by the adjacent binding
+            | Nonterminal (ComplexExpression, [ Nonterminal (Binding, _) as extra; expr ])
+            | Nonterminal (ComplexExpression, [ expr; Nonterminal (Binding, _) as extra ]) ->
+                let (AbstractTypeTree (cp, bindings, code)) = analyzeTypes expr
+                let (AbstractTypeTree (_, extraBinding, _)) = analyzeTypes extra
+                AbstractTypeTree (
+                    cp,
+                    bindings.Append extraBinding,
+                    code
+                )
+
+            // Returns an ATT equal to the ATT of the expr, literally
+            | Nonterminal (ComplexExpression, [ Terminal (DelimitBeginBlock, _); expr; Terminal (DelimitEndBlock, _) ]) ->
+                analyzeTypes expr
+
+            | _ -> invalidArg "code" (sprintf "Improper parse tree: %A") //TODO debug stuff
 
             (*match code with
             | Terminal (Expression, _) | Nonterminal (Expression, _) as exprTree ->
