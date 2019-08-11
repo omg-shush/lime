@@ -6,6 +6,11 @@
 /// postfix (as in value*), infix (as in value + value), circumfix (as in [value]), or circumliteral (as in <literal-value>)
 type OperationType = Prefix | Postfix | Infix | Circumfix | Circumliteral
 
+/// Represents an element of a custom operation form
+type OperationForm<'operation> =
+    | Form of 'operation
+    | Argument
+
 /// Associates an operation with its type
 type Operation<'operation when 'operation: equality> =
     | Prefix of 'operation
@@ -16,6 +21,7 @@ type Operation<'operation when 'operation: equality> =
     | Adjacent of 'operation
     | RemainingAdjacent of 'operation
     | Null of 'operation
+    | Customfix of 'operation * OperationForm<'operation> list
 
     member this.GetOp =
         match this with
@@ -282,6 +288,45 @@ module OperatorParseTree =
                     
                     // Run through workingInput, looking for instances of this Null operation
                     parseListForNullOperation workingInput
+
+                | Customfix (nextOperation, operationPattern) ->
+                    let opLength = operationPattern.Length
+                    // Recursively reads through the workingList and substitutes each instance of the Customfix operation
+                    let rec parseListForCustomfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
+                        if (workingList.Length < opLength) then
+                            workingList // Too small to contain the custom operation
+                        else
+                            let rec tryMatchCustomOp (customOp: OperationForm<'operation> list)
+                                                        (workingList: OperatorParseTree<'alphabet, 'operation> list)
+                                                        : OperatorParseTree<'alphabet, 'operation> list Option =
+                                if (workingList.Length < customOp.Length) then
+                                    None // Too small to contain the custom operation
+                                else
+                                    match customOp, List.tryHead workingList with
+                                    | [], _ -> Some [] // Entire customOp has been matched successfully
+                                    | Form f :: opTail, Some { data = Operation o } when f = o ->
+                                        tryMatchCustomOp opTail workingList.Tail // OK, this Form (aka keyword/operation) matches, keep on matching
+                                    | Argument :: opTail, Some _ ->
+                                        match tryMatchCustomOp opTail workingList.Tail with // Does the rest of the custom operator match?
+                                        | Some argsTail -> Some (workingList.Head :: argsTail) // If so, save this argument as part of the operator
+                                        | None -> None // Otherwise, no match here
+                                    | _ -> None
+                            match tryMatchCustomOp operationPattern workingList with
+                            | Some children ->
+                                // Construct subtree with this operation at the root
+                                let parsedSubtree =
+                                    {
+                                        // Insert adjacency operation data
+                                        data = Operation nextOperation;
+                                        // Add left and right subtrees as children of this operation
+                                        children = children;
+                                    }
+                                parsedSubtree :: parseListForCustomfixOperation (List.skip opLength workingList)
+                            | None ->
+                                // No match here, try to move on
+                                workingList.Head :: parseListForCustomfixOperation workingList.Tail
+
+                    parseListForCustomfixOperation workingInput
 
         ) atomizedInput opPriority
 

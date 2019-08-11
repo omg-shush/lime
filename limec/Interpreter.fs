@@ -113,6 +113,30 @@ module Interpreter =
                         | ValueLibFun (UnitType, otype, func) ->
                             Unit |> func, env // TODO assume func doesn't change env
                         | _ -> invalidArg "!" "Not given a func"
+
+                    | LlamaOperator "$if-then-else" ->
+                        let condition, thenExpr, elseExpr = match expr.children with [ c; t; e ] -> c, t, e | _ -> invalidArg "if-then-else" "expected exactly 3 child expressions"
+                        match evaluateExpression condition env with
+                        // TODO ignoring any changes to the environment made by evaluating the condition, is that right?
+                        | ValueBool true, _ -> evaluateExpression thenExpr env
+                        | ValueBool false, _ -> evaluateExpression elseExpr env
+                        | _ -> invalidArg "if-then-else" "expected condition to be a boolean"
+
+                    | LlamaOperator "==" ->
+                        let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "==" "expected exactly 2 child expressions"
+                        // TODO ignoring any changes to the environment made by evaluating either side, is that right?
+                        let (leftValue, _), (rightValue, _) = evaluateExpression left env, evaluateExpression right env
+                        (ValueBool (
+                            match leftValue, rightValue with
+                            | Unit, Unit -> true // TODO what does this case even mean?
+                            | ValueString a, ValueString b -> a = b
+                            | ValueChar a, ValueChar b -> a = b
+                            | ValueInt a, ValueInt b -> a = b
+                            | ValueBool a, ValueBool b -> a = b
+                            | ValueDouble a, ValueDouble b -> a = b // TODO should i use fancier double equality or leave it as is, and let the client decide what kind of equality?
+                            | _ -> invalidArg "==" (sprintf "cannot test equality on %A and %A" leftValue rightValue)
+                        ), env)
+
                     | LlamaName _ | LlamaOperator _ as id ->
                         match env.Get id with
                         | Some (Initialized llama) -> llama, env

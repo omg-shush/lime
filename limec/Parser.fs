@@ -8,14 +8,16 @@ module Parser =
                 Expression, [ Expression; Expression ]
 
                 TypeHint, [ DelimitBeginType; Expression; DelimitEndType ]
-                TypeHint, [ DelimitBeginType; StatementList; DelimitEndType ]
-                TypeHint, [ DelimitBeginType; StatementList; DelimitEndType ]
+                TypeHint, [ DelimitBeginType; Statement; DelimitEndType ]
 
+                Statement, [ TypeHint; Statement ]
+                Statement, [ TypeHint; LineBreak; Statement ]
                 Statement, [ Expression; LineBreak ]
-                Statement, [ DelimitBeginBlock; Statement; DelimitEndBlock ]
+                Statement, [ DelimitBeginBlock; Statement; DelimitEndBlock; LineBreak ] // TODO change preprocessor so linebreak is no longer needed
+                Statement, [ Statement; Statement ]
 
-                Binding, [ Expression; OperationEquals; Statement]
-                Binding, [ Expression; OperationColon; Statement]
+                Statement, [ Expression; OperationEquals; Statement ]
+                Statement, [ Expression; OperationColon; Statement ]
             ]
             |> ShiftReduceParser.ofRuleList
 

@@ -7,14 +7,14 @@ module SemanticAnalyzer =
         let typFromTHint tHint =
             match tHint with
             | Nonterminal (TypeHint, [ Terminal (DelimitBeginType, _); Terminal (Expression, (_, Identifier typ)); Terminal (DelimitEndType, _) ]) ->
-                [ LlamaName typ ]
+                [ LlamaName typ ] // TODO accept more complicated types, including Statement expressions
             //| Terminal (Expression, (_, Identifier typ)) -> [ LlamaName typ ]
             | _ -> To.Do ()
 
         let rec serializeExpression (e: ParseTree<GrammarElement, CodePosition * Lexeme>) =
             match e with
-            | Nonterminal (Expression, [ e1; e2 ])
-            | Nonterminal (Expression, [ e1; Terminal (LineBreak, _); e2; Terminal (LineBreak, _) ]) -> // Absorb line breaks between expressions
+            | Nonterminal (Expression, [ e1; e2 ]) ->
+            //| Nonterminal (Expression, [ e1; Terminal (LineBreak, _); e2; Terminal (LineBreak, _) ]) -> // Absorb line breaks between expressions
                 (serializeExpression e1) @ (serializeExpression e2)
             | Terminal (Expression, cpAndLexeme) -> [ cpAndLexeme ]
             | _ -> invalidArg "e" "Parse tree contains a non-expression"
@@ -37,6 +37,58 @@ module SemanticAnalyzer =
         /// while leaving actual code expressions untouched
         let rec analyzeTypes (code: ParseTree<GrammarElement, CodePosition * Lexeme>) : AbstractTypeTree =
             match code with
+
+            // Takes a unitary expression parse tree and flattens it into a list, ready for operator parsing
+            | Terminal (Expression, _) | Nonterminal (Expression, _) as exprTree ->
+                let flatExpr = exprTree |> serializeExpression |> prepareExpression
+                let cp = fst (List.last flatExpr)
+                AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
+
+            | Nonterminal (TypeHint, _) ->
+                invalidArg "code" "Type hint is lonely! Not associated with any expression"
+
+            | Nonterminal (Statement, [ Nonterminal (TypeHint, _) as typeHint; Nonterminal (Statement, _) as stmt ])
+            | Nonterminal (Statement, [ Nonterminal (TypeHint, _) as typeHint; Terminal (LineBreak, _); Nonterminal (Statement, _) as stmt ]) ->
+                // First, analyze the child statement
+                let (AbstractTypeTree (cp, _, _)) as analyzedStmt = analyzeTypes stmt
+                // Then, wrap it in an ATT to store the type hint, which will evaluate to the stmt being hinted at
+                let dummyName = LlamaName ("$" + (Counter.next ()).ToString ())
+                AbstractTypeTree (
+                    cp,
+                    Association.Empty.Put dummyName { typ = typFromTHint typeHint; def = analyzedStmt },
+                    Stack.Empty.Push [ Choice2Of2 (LlamaOperator "("); Choice2Of2 (LlamaOperator "$init"); Choice2Of2 dummyName; Choice2Of2 dummyName; Choice2Of2 (LlamaOperator ")") ]
+                )
+
+            | Nonterminal (Statement, [ expr; Terminal (LineBreak, _) ]) ->
+                analyzeTypes expr
+
+            | Nonterminal (Statement, [ Terminal (DelimitBeginBlock, _); expr; Terminal (DelimitEndBlock, _); Terminal (LineBreak, _) ]) ->
+                let (AbstractTypeTree (cp, _, _) as contained) = analyzeTypes expr
+                let dummyName = LlamaName ("$" + (Counter.next ()).ToString ())
+                AbstractTypeTree (
+                    cp,
+                    Association.Empty.Put dummyName { typ = []; def = contained },
+                    Stack.Empty.Push [ Choice2Of2 (LlamaOperator "("); Choice2Of2 (LlamaOperator "$init"); Choice2Of2 dummyName; Choice2Of2 dummyName; Choice2Of2 (LlamaOperator ")") ]
+                )
+
+            | Nonterminal (Statement, [ stmt1; stmt2 ]) ->
+                let att1 = analyzeTypes stmt1
+                let att2 = analyzeTypes stmt2
+                att1.Append att2
+
+            | Nonterminal (Statement, [ lhs; bindingType; rhs ]) ->
+                let cp, varName = match lhs with Terminal (Expression, (cp, Identifier name)) -> cp, LlamaName name | _ -> To.Do() // TODO pattern matching / custom operators
+                let att = analyzeTypes rhs
+                let additionalTypes =
+                    match bindingType with
+                    | Terminal (OperationColon, _) -> [ LlamaName "mutable" ]
+                    | Terminal (OperationEquals, _) -> [ LlamaName "immutable" ]
+                    | _ -> To.Do() // TODO different binding types?
+                AbstractTypeTree (
+                    cp,
+                    Association.Empty.Put varName { typ = additionalTypes; def = att },
+                    Stack.Empty.Push [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 varName ]
+                )
 
             | _ -> invalidArg "code" (sprintf "Improper parse tree: %A" code)
 
@@ -205,9 +257,13 @@ module SemanticAnalyzer =
 
             Infix (LlamaOperator ".")
 
+            Infix (LlamaOperator "==")
+
             Postfix (LlamaOperator "!")
 
             Infix (LlamaOperator "->")
+
+            Customfix (LlamaOperator "$if-then-else", [ Form (LlamaName "if"); Argument; Form (LlamaName "then"); Argument; Form (LlamaName "else"); Argument ])
 
             RemainingAdjacent (LlamaOperator "next")
         ]

@@ -5,6 +5,13 @@ open System
 module To =
     let Do () = raise (NotImplementedException ())
 
+// TODO this baaaaad. very bad.
+module Counter =
+    let mutable counter = 0
+    let next () =
+        counter <- counter + 1
+        counter
+
 type LogLevel =
     | Info
     | Warning
@@ -57,7 +64,6 @@ type Lexeme =
 type LexedCode = LexedCode of (CodePosition * Lexeme) seq
 
 type GrammarElement =
-    | Binding
     | OperationEquals
     | OperationColon
     | DelimitBeginType
@@ -67,7 +73,6 @@ type GrammarElement =
     | DelimitEndBlock
     | Expression
     | Statement
-    | StatementList
     | LineBreak
 
 type ParsedCode = 
@@ -124,7 +129,29 @@ and AbstractSyntaxTree =
         match this, ast with
         | AbstractSyntaxTree (thisLlamas, thisCode), AbstractSyntaxTree (otherLlamas, otherCode) ->
             AbstractSyntaxTree (thisLlamas.Append otherLlamas, thisCode.Append otherCode)*)
-    override this.ToString () = "AST\n" + (match this with AbstractSyntaxTree (cp, assoc, code) -> cp.ToString() + assoc.ToString () + "\n CODE\n" + code.ToString ())
+    member private ast.toString indent =
+        let spaceIndent = String.replicate (indent - 1) "|   " + "|--+ "
+        let assocToString (assoc: Association<LlamaIdentifier, Llama>) =
+            (assoc.Array |> Array.map (fun { key = k; value = v } -> spaceIndent + k.ToString () + " " + v.typ.ToString () + "\n" + v.def.toString (indent + 1)) |> String.concat "")
+        let codeToString (LlamaExpression code: LlamaExpression) =
+            let rec lispify (code: OperatorParseTree<LlamaLiteral, LlamaIdentifier>) : string =
+                let word =
+                    match code.data with
+                    | Operation (LlamaName word)
+                    | Operation (LlamaOperator word)
+                    | Atom (LlamaString word) ->
+                        word
+                    | Atom (LlamaChar c) -> c.ToString ()
+                    | Atom (LlamaInt i) -> i.ToString ()
+                    | Atom (LlamaDouble d) -> d.ToString ()
+                    | Atom (LlamaBool b) -> b.ToString ()
+                "(" + word + (code.children |> List.map (fun child -> " " + lispify child) |> String.concat "") + ")"
+            lispify code
+        let (AbstractSyntaxTree (cp, assoc, code)) = ast
+        (assocToString assoc) + spaceIndent + "CODE" + (codeToString code) + "\n"
+
+    override ast.ToString () =
+        "AST\n====================\n" + ast.toString 1
 
 (*module AbstractSyntaxTree =
     let Empty =
@@ -133,4 +160,3 @@ and AbstractSyntaxTree =
 module AbstractTypeTree =
     let Empty =
         AbstractTypeTree (CodePosition.Start, Association.Empty, Stack.Empty)
-    let DefaultBinding = LlamaName "$"

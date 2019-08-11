@@ -1,74 +1,25 @@
-/* Old test code!
+//////////////////////////////////////////////////////////////////////////////////////////
 
-// Test lime program
+/* Accepts and processes commands from the command line
+ * until the "quit" command is entered.
+ * 
+ * hello    Makes the computer say hi to you
+ */
 
-/* Test
- * multiline
- * comment
- *
-
-Entry=[procedure = stuff
-    "Hello world from \"  /*lime*/ /*!" -> /* Test inline comment * PrintLine
-        'c' -> PrintChar // PrintChar is probably not real either
-    */
-
-/// New test program!!
-/*
-Entry=[ procedure ]
-    "Hello world from \"lime\" !!!" -> PrintLine
-/* big indent!   *//*     "Hello from a ... sUbSCoPe" -> PrintLine
-    PrintLine // Add newline, for readability /* or something like that
-
-    // Local storage!!
-    localvar=int
-    MyFunc -> localvar // this calls a function, apparently
-
-            
-        /*
-
-// Returns the answer to life, the universe, and everything
-MyFunc = [procedure -> result = int]
-    // Oops, fix the answer real quick!
-    answer + (-1.45f) -> answer
-    answer -> result
-
-answer = 0xf00f_CAFE
-*/
-
-// Actually legitimate test code
-
-//Entry
-
-//(*) = [ subroutine ] 5
-
-//PrintTwice = [ procedure(x = string -> unit) ]
-
-/*Entry = [ subroutine ]
-    msg = [ string ] "Hello world!"
-    msg2 = [ string ] "$> Toodles!"
-    msg
-    -> dotnet.WriteLine
-    msg2 -> dotnet. WriteLine
-    ":)" -> msg
-    msg -> (dotnet.WriteLine)
-    
-Entry!
-Entry!*/
-
-"" -> dotnet.WriteLine
+prompt = [ string ] "$> "
 
 Echo = [ subroutine ]
-    prompt = [ string ] "$> "
-        prompt
-    -> dotnet.Write
+    prompt -> dotnet.Write
     msg = [ string ] dotnet.ReadLine!
-    msg -> dotnet.WriteLine
-    Echo!
+    if msg == "quit"
+    then "toodles" -> dotnet.WriteLine
+    else
+        if msg == "hello"
+        then
+            "Hi! I'm a computer!" -> dotnet.WriteLine
+            Echo!
+        else
+            "unrecognized command" -> dotnet.WriteLine
+            Echo!
 
 Echo!
-
-/*hi = [ string ] "Hello, world!"
-byte = [ string ]
-    "bye"
-hi -> dotnet.WriteLine
-hi -> dotnet.WriteLine*/
