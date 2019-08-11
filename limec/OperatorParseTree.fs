@@ -11,6 +11,9 @@ type OperationForm<'operation> =
     | Form of 'operation
     | Argument
 
+/// Represents which direction an operation associates in
+type OperationAssociativity = LeftAssociative | RightAssociative
+
 /// Associates an operation with its type
 type Operation<'operation when 'operation: equality> =
     | Prefix of 'operation
@@ -21,7 +24,7 @@ type Operation<'operation when 'operation: equality> =
     | Adjacent of 'operation
     | RemainingAdjacent of 'operation
     | Null of 'operation
-    | Customfix of 'operation * OperationForm<'operation> list
+    | Customfix of OperationAssociativity * 'operation * OperationForm<'operation> list
 
     member this.GetOp =
         match this with
@@ -289,8 +292,12 @@ module OperatorParseTree =
                     // Run through workingInput, looking for instances of this Null operation
                     parseListForNullOperation workingInput
 
-                | Customfix (nextOperation, operationPattern) ->
+                | Customfix (associativity, nextOperation, operationPattern) ->
                     let opLength = operationPattern.Length
+                    let workingInput, operationPattern =
+                        match associativity with
+                        | LeftAssociative -> workingInput, operationPattern
+                        | RightAssociative -> List.rev workingInput, List.rev operationPattern
                     // Recursively reads through the workingList and substitutes each instance of the Customfix operation
                     let rec parseListForCustomfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
                         if (workingList.Length < opLength) then
@@ -319,14 +326,19 @@ module OperatorParseTree =
                                         // Insert adjacency operation data
                                         data = Operation nextOperation;
                                         // Add left and right subtrees as children of this operation
-                                        children = children;
+                                        children =
+                                            match associativity with
+                                            | LeftAssociative -> children
+                                            | RightAssociative -> List.rev children
                                     }
-                                parsedSubtree :: parseListForCustomfixOperation (List.skip opLength workingList)
+                                parseListForCustomfixOperation (parsedSubtree :: (List.skip opLength workingList)) // parsedSubtree is cons'd on BEFORE re-parsing, so that chains eg. if-else if-else can work
                             | None ->
                                 // No match here, try to move on
                                 workingList.Head :: parseListForCustomfixOperation workingList.Tail
 
-                    parseListForCustomfixOperation workingInput
+                    match associativity with
+                    | LeftAssociative -> parseListForCustomfixOperation workingInput
+                    | RightAssociative -> parseListForCustomfixOperation workingInput |> List.rev
 
         ) atomizedInput opPriority
 

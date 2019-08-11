@@ -263,7 +263,7 @@ module SyntaxAnalyzer =
 
             Infix (LlamaOperator "->")
 
-            Customfix (LlamaOperator "$if-then-else", [ Form (LlamaName "if"); Argument; Form (LlamaName "then"); Argument; Form (LlamaName "else"); Argument ])
+            Customfix (RightAssociative, LlamaOperator "$if-then-else", [ Form (LlamaName "if"); Argument; Form (LlamaName "then"); Argument; Form (LlamaName "else"); Argument ])
 
             RemainingAdjacent (LlamaOperator "next")
         ]

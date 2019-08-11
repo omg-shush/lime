@@ -13,12 +13,11 @@ Echo = [ subroutine ]
     msg = [ string ] dotnet.ReadLine!
     if msg == "quit" then
         "toodles" -> dotnet.WriteLine
+    else if msg == "hello" then
+        "Hi! I'm a computer!" -> dotnet.WriteLine
+        Echo!
     else
-        if msg == "hello" then
-            "Hi! I'm a computer!" -> dotnet.WriteLine
-            Echo!
-        else
-            "unrecognized command" -> dotnet.WriteLine
-            Echo!
+        "unrecognized command" -> dotnet.WriteLine
+        Echo!
 
 Echo!
