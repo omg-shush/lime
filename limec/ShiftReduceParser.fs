@@ -64,7 +64,7 @@ type ShiftReduceParser<'element when 'element: comparison> =
         | Cons (EmptyStack, single) -> single
         //| _ -> parsedStack.Item 0 // TODO until able to parse all of input, ignore the rest
         | _ ->
-            printf "Failed to parse input, parse stack of size %d:\n%s" (parsedStack.Length) (parsedStack.ToString ())
+            printf "Failed to parse input, parse stack of size %d:\n%s" (parsedStack.Length) (parsedStack.ToStringRec ())
             invalidArg "input" "Failed to parse input"
 
 module ShiftReduceParser =

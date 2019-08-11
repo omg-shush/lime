@@ -42,8 +42,8 @@ answer = 0xf00f_CAFE
 //(*) = [ subroutine ] 5
 
 //PrintTwice = [ procedure(x = string -> unit) ]
-/*
-Entry = [ subroutine ]
+
+/*Entry = [ subroutine ]
     msg = [ string ] "Hello world!"
     msg2 = [ string ] "$> Toodles!"
     msg
@@ -53,7 +53,7 @@ Entry = [ subroutine ]
     msg -> (dotnet.WriteLine)
     
 Entry!
-Entry!
+Entry!*/
 
 "" -> dotnet.WriteLine
 
@@ -65,8 +65,10 @@ Echo = [ subroutine ]
     msg -> dotnet.WriteLine
     Echo!
 
-Echo!*/
+Echo!
 
-hi = [ string ] "Hello, world!"
-hi -> PrintLine
-hi -> PrintLine
+/*hi = [ string ] "Hello, world!"
+byte = [ string ]
+    "bye"
+hi -> dotnet.WriteLine
+hi -> dotnet.WriteLine*/

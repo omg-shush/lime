@@ -66,7 +66,9 @@ type GrammarElement =
     | DelimitBeginBlock
     | DelimitEndBlock
     | Expression
-    | ComplexExpression
+    | Statement
+    | StatementList
+    | LineBreak
 
 type ParsedCode = 
     | ParsedCode of ParseTree<GrammarElement, CodePosition * Lexeme>
@@ -107,6 +109,14 @@ and AbstractTypeTree =
         match this, att with
         | AbstractTypeTree (thisCp, thisLlamas, thisCode), AbstractTypeTree (otherCp, otherLlamas, otherCode) ->
             AbstractTypeTree (thisCp, thisLlamas.Append otherLlamas, thisCode.Append otherCode)
+    member this.GenUniqueId =
+        let (AbstractTypeTree (_, bindings, _)) = this
+        let rec genUniqueId id =
+            if bindings.ContainsKey (LlamaName (id.ToString ())) then
+                genUniqueId (id + 1)
+            else
+                LlamaName (id.ToString ())
+        genUniqueId 0
     override this.ToString () = "AST\n" + (match this with AbstractTypeTree (cp, assoc, code) -> cp.ToString() + assoc.ToString () + "\n CODE\n" + code.ToString ())
 and AbstractSyntaxTree =
     | AbstractSyntaxTree of CodePosition * Association<LlamaIdentifier, Llama> * LlamaExpression

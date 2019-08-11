@@ -10,6 +10,11 @@ type Stack<'T> =
         |> Array.map (fun x -> sprintf "%A" x)
         |> String.concat "\n|> "
 
+    member this.ToStringRec () =
+        this.Array
+        |> Array.map (fun x -> x.ToString ())
+        |> String.concat "\n|> "
+
     member this.Bottom : 'T Stack =
         match this with
         | EmptyStack -> invalidArg "stack" "Stack is empty"

@@ -110,7 +110,10 @@ module Preprocessor =
                                     Cons (code, (pos, nextChar)), reducedIndents, None
                                 elif (not reducedIndents.IsEmpty && currentIndent < totalIndent reducedIndents) then
                                     // Can pop off another level and then recurse
-                                    unindent (Cons (code, (pos, '\r'))) reducedIndents.Tail
+                                    match code with
+                                    // If block ends in a newline, duplicate it to after the block closes TODO newln has wrote CodePosition?
+                                    | Cons (_, (_, '\n' as newln)) -> unindent (Cons (Cons (code, (pos, '\r')), newln)) reducedIndents.Tail
+                                    | _ -> unindent (Cons (code, (pos, '\r'))) reducedIndents.Tail // Otherwise, just unindent
                                 else
                                     // Invalid indentation
                                     Logger.Log Error (sprintf "%sInvalid indentation of %d in context of %A" (pos.ToString ()) currentIndent reducedIndents) controls
