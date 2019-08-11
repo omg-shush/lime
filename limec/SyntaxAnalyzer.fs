@@ -1,6 +1,6 @@
 ﻿namespace limec
 
-module SemanticAnalyzer =
+module SyntaxAnalyzer =
 
     let Analyze (ParsedCode code: ParsedCode) (controls: Controls) : AbstractSyntaxTree =
         // Extracts a type list from a given TypeHint parse tree

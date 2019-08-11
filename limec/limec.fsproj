@@ -20,7 +20,7 @@
     <Compile Include="Preprocessor.fs" />
     <Compile Include="Lexer.fs" />
     <Compile Include="Parser.fs" />
-    <Compile Include="SemanticAnalyzer.fs" />
+    <Compile Include="SyntaxAnalyzer.fs" />
     <Compile Include="Interpreter.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

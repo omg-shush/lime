@@ -11,11 +11,10 @@ prompt = [ string ] "$> "
 Echo = [ subroutine ]
     prompt -> dotnet.Write
     msg = [ string ] dotnet.ReadLine!
-    if msg == "quit"
-    then "toodles" -> dotnet.WriteLine
+    if msg == "quit" then
+        "toodles" -> dotnet.WriteLine
     else
-        if msg == "hello"
-        then
+        if msg == "hello" then
             "Hi! I'm a computer!" -> dotnet.WriteLine
             Echo!
         else

@@ -39,7 +39,7 @@ module Compiler =
         let parsed = Parser.Parse lexed controls
         Logger.Log Info (parsed.ToString ()) controls
 
-        let ast = SemanticAnalyzer.Analyze parsed controls
+        let ast = SyntaxAnalyzer.Analyze parsed controls
         Logger.Log Info (ast.ToString ()) controls
 
         // TODO check for target type
