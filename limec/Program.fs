@@ -29,25 +29,33 @@ module Compiler =
         Logger.Log Info (sprintf "%A" parameters) parameters
 
         match parameters.target with
-        | Ast -> parameters |> Preprocessor.Preprocess |> Lexer.Lex parameters |> Parser.Parse parameters |> SyntaxAnalyzer.Analyze parameters |> ignore
+        | Ast -> parameters |> Preprocessor.Preprocess |> Lexer.Lex parameters |> Parser.Parse parameters |> SyntaxAnalyzer.Analyze parameters |> AbstractSyntaxFile.Write parameters
         | Il -> To.Do()
         | Exe -> To.Do()
-        | Intr -> 
-            // Read and preprocess the raw text file into a positioned sequence of characters,
-            // eliminating redundant characters and processing indentation as well
-            let preprocessed = Preprocessor.Preprocess parameters
-            Logger.Log Info (seqToString preprocessed) parameters
+        | Intr ->
+            let ast =
+                let header = Array.zeroCreate 4 // TODO don't hardcode size of file header
+                let headerSize = System.IO.FileStream.Null.Read (header, 0, header.Length)
+                if headerSize = header.Length && header = AbstractSyntaxFile.AST_HEADER then
+                    AbstractSyntaxFile.Read parameters
+                else
+                    // Read and preprocess the raw text file into a positioned sequence of characters,
+                    // eliminating redundant characters and processing indentation as well
+                    let preprocessed = Preprocessor.Preprocess parameters
+                    Logger.Log Info (seqToString preprocessed) parameters
 
-            // Merge characters together into a flat sequence of lexemes
-            let lexed = Lexer.Lex parameters preprocessed
-            Logger.Log Info (tokToString lexed) parameters
+                    // Merge characters together into a flat sequence of lexemes
+                    let lexed = Lexer.Lex parameters preprocessed
+                    Logger.Log Info (tokToString lexed) parameters
 
-            let parsed = Parser.Parse parameters lexed
-            Logger.Log Info (parsed.ToString ()) parameters
+                    let parsed = Parser.Parse parameters lexed
+                    Logger.Log Info (parsed.ToString ()) parameters
 
-            let ast = SyntaxAnalyzer.Analyze parameters parsed
-            Logger.Log Info (ast.ToString ()) parameters
+                    let ast = SyntaxAnalyzer.Analyze parameters parsed
+                    Logger.Log Info (ast.ToString ()) parameters
 
-            Interpreter.Interpret parameters ast |> ignore
+                    ast
+
+            Interpreter.Interpret parameters ast |> printfn "Process returned with value `%A'"
         
         0
