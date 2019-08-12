@@ -17,9 +17,11 @@ type LogLevel =
     | Warning
     | Error
 
-type Target = // TODO: add "interpreter"
+type Target =
     | Il
     | Exe
+    | Intr
+    | Ast
 
 type Mode =
     | Debug
@@ -29,7 +31,7 @@ type Verbosity =
     | Verbose
     | Terse
 
-type Controls = // TODO: rename "parameters"
+type Parameters =
     {
         input: string;
         output: string;
@@ -152,11 +154,3 @@ and AbstractSyntaxTree =
 
     override ast.ToString () =
         "AST\n====================\n" + ast.toString 1
-
-(*module AbstractSyntaxTree =
-    let Empty =
-        AbstractSyntaxTree (Association.Empty, OperatorParseTree)*)
-
-module AbstractTypeTree =
-    let Empty =
-        AbstractTypeTree (CodePosition.Start, Association.Empty, Stack.Empty)

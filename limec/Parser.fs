@@ -2,7 +2,7 @@
 
 module Parser =
 
-    let Parse (LexedCode code: LexedCode) (controls: Controls) : ParsedCode =
+    let Parse (controls: Parameters) (LexedCode code: LexedCode) : ParsedCode =
         let cfgParser =
             [
                 Expression, [ Expression; Expression ]

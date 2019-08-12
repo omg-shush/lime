@@ -2,7 +2,7 @@
 
 module SyntaxAnalyzer =
 
-    let Analyze (ParsedCode code: ParsedCode) (controls: Controls) : AbstractSyntaxTree =
+    let Analyze (controls: Parameters) (ParsedCode code: ParsedCode) : AbstractSyntaxTree =
         // Extracts a type list from a given TypeHint parse tree
         let typFromTHint tHint =
             match tHint with

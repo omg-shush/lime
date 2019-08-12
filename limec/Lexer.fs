@@ -4,7 +4,7 @@ open System
 
 module Lexer =
 
-    let Lex (code: PreprocessedCode) (controls: Controls) : LexedCode =
+    let Lex (controls: Parameters) (code: PreprocessedCode) : LexedCode =
         let code = match code with PreprocessedCode code -> code
 
         let unzip s = Seq.map fst s, Seq.map snd s

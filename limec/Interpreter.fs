@@ -31,7 +31,7 @@ module Interpreter =
 
     type Environment = Association<LlamaIdentifier, IdentifierValue>
 
-    let Interpret (ast: AbstractSyntaxTree) (controls: Controls) =
+    let Interpret (controls: Parameters) (ast: AbstractSyntaxTree) =
         let rec interpret (AbstractSyntaxTree (codePosition, localBindings, LlamaExpression expression)) (dynamicEnvironment: Environment) : Value * Environment =
             // Wrap the LlamaIdentifier -> Llama into a LlamaIdentifier -> (Uninitialized Llama), to prepare for substituting each with initialized values when evaluated
             let uninitBindings (b: Association<LlamaIdentifier, Llama>) = b.List |> List.map (fun kvpair -> kvpair.key, Uninitialized kvpair.value) |> Association.Empty.PutAll

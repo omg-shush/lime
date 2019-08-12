@@ -2,7 +2,7 @@
   "profiles": {
     "limec": {
       "commandName": "Project",
-      "commandLineArgs": "\"..\\..\\..\\..\\TestLime\\TestLime.lime->..\\..\\..\\..\\TestLime\\TestLime.exe\" --verbose --target=exe --mode=debug"
+      "commandLineArgs": "\"..\\..\\..\\..\\TestLime\\TestLime.lime -> ..\\..\\..\\..\\TestLime\\TestLime.exe\" --verbose --target=interpret --mode=debug"
     }
   }
 }

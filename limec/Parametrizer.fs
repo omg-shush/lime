@@ -1,22 +1,22 @@
 ﻿namespace limec
 
-module Controller =
+module Parametrizer =
 
-    let Control (argv: string[]) : Controls =
+    let Parametrize (argv: string[]) : Parameters =
         let defaultControls =
             {
                 input = "Program.lime";
                 output = "Program.exe";
                 target = Exe;
-                mode = Debug;
+                mode = Release;
                 verbosity = Terse;
             }
         Array.fold (fun controls (argument: string) ->
-            if (argument.Contains "->") then
+            if (argument.Contains " -> ") then
                 // I/O argument
-                let ioargs = argument.Split "->"
+                let ioargs = argument.Split " -> "
                 if (ioargs.Length <> 2) then
-                    Logger.Log Warning ("Argument `" + argument + "' misformed, use `input-file-name->output-file-name'") defaultControls
+                    Logger.Log Warning ("Argument `" + argument + "' misformed, use `input-file-name -> output-file-name'") defaultControls
                     controls
                 else
                     { controls with input = ioargs.[0]; output = ioargs.[1] }
@@ -30,6 +30,8 @@ module Controller =
                             match flagargs.[1].ToLower () with
                             | "il" -> { controls with target = Il }
                             | "exe" -> { controls with target = Exe }
+                            | "intr" | "interpret" -> { controls with target = Intr }
+                            | "ast" -> { controls with target = Ast }
                             | _ ->
                                 Logger.Log Warning ("Argument `" + argument + "' misformed, use `--target=EXE'") defaultControls
                                 controls

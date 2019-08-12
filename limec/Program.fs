@@ -23,26 +23,31 @@ module Compiler =
 
     [<EntryPoint>]
     let main argv =
+
         // Parse arguments to get the configuration in which the compiler should run
-        let controls = Controller.Control argv
-        Logger.Log Info (sprintf "%A" controls) controls
+        let parameters = Parametrizer.Parametrize argv
+        Logger.Log Info (sprintf "%A" parameters) parameters
 
-        // Read and preprocess the raw text file into a positioned sequence of characters,
-        // eliminating redundant characters and processing indentation as well
-        let preprocessed = Preprocessor.Preprocess controls
-        Logger.Log Info (seqToString preprocessed) controls
+        match parameters.target with
+        | Ast -> parameters |> Preprocessor.Preprocess |> Lexer.Lex parameters |> Parser.Parse parameters |> SyntaxAnalyzer.Analyze parameters |> ignore
+        | Il -> To.Do()
+        | Exe -> To.Do()
+        | Intr -> 
+            // Read and preprocess the raw text file into a positioned sequence of characters,
+            // eliminating redundant characters and processing indentation as well
+            let preprocessed = Preprocessor.Preprocess parameters
+            Logger.Log Info (seqToString preprocessed) parameters
 
-        // Merge characters together into a flat sequence of lexemes
-        let lexed = Lexer.Lex preprocessed controls
-        Logger.Log Info (tokToString lexed) controls
+            // Merge characters together into a flat sequence of lexemes
+            let lexed = Lexer.Lex parameters preprocessed
+            Logger.Log Info (tokToString lexed) parameters
 
-        let parsed = Parser.Parse lexed controls
-        Logger.Log Info (parsed.ToString ()) controls
+            let parsed = Parser.Parse parameters lexed
+            Logger.Log Info (parsed.ToString ()) parameters
 
-        let ast = SyntaxAnalyzer.Analyze parsed controls
-        Logger.Log Info (ast.ToString ()) controls
+            let ast = SyntaxAnalyzer.Analyze parameters parsed
+            Logger.Log Info (ast.ToString ()) parameters
 
-        // TODO check for target type
-        Interpreter.Interpret ast controls |> ignore
+            Interpreter.Interpret parameters ast |> ignore
         
         0

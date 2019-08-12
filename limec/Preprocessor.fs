@@ -22,7 +22,7 @@ module Preprocessor =
     /// <para> Recognizes string/character literals </para>
     /// <para> Interprets indentations </para>
     /// </summary>
-    let Preprocess (controls: Controls) : PreprocessedCode =
+    let Preprocess (controls: Parameters) : PreprocessedCode =
         let isWhitespace c =
             c = ' ' || c = '\r' || c = '\n'
 
