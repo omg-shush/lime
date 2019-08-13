@@ -54,6 +54,14 @@ type Association<'K, 'V when 'K: comparison> =
         | (k, v) :: tail -> (this.Put k v).PutAll tail
         | [] -> this
 
+    member this.InsertAll kvseq =
+        if Seq.isEmpty kvseq then
+            this
+        else
+            let head, tail = Seq.head kvseq, Seq.tail kvseq
+            let thisWithHead = this.Put head.key head.value
+            thisWithHead.InsertAll tail
+
     member this.Append (assoc: Association<'K, 'V>) =
         this.PutAll (List.map (fun kv -> kv.key, kv.value) assoc.KeyValueSet)
 

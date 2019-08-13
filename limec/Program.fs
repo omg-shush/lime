@@ -1,5 +1,7 @@
 ﻿namespace limec
 
+open System
+
 module Compiler =
 
     /// Pretty prints a sequence of characters with position information,
@@ -34,8 +36,8 @@ module Compiler =
         | Exe -> To.Do()
         | Intr ->
             let ast =
-                let header = Array.zeroCreate 4 // TODO don't hardcode size of file header
-                let headerSize = System.IO.FileStream.Null.Read (header, 0, header.Length)
+                let header = Array.zeroCreate AbstractSyntaxFile.AST_HEADER.Length
+                let headerSize = (IO.File.OpenRead parameters.input).Read (header.AsSpan ())
                 if headerSize = header.Length && header = AbstractSyntaxFile.AST_HEADER then
                     AbstractSyntaxFile.Read parameters
                 else
@@ -56,6 +58,7 @@ module Compiler =
 
                     ast
 
-            Interpreter.Interpret parameters ast |> printfn "Process returned with value `%A'"
+            Interpreter.Interpret parameters ast |> ignore //|> printfn "Process returned with value `%A'"
+            ()
         
         0

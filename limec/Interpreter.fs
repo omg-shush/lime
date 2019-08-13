@@ -140,8 +140,8 @@ module Interpreter =
                     | LlamaName _ | LlamaOperator _ as id ->
                         match env.Get id with
                         | Some (Initialized llama) -> llama, env
-                        | Some (Uninitialized _) -> invalidArg "program" (sprintf "using uninitialized binding") // TODO only crash if couldn't initialize beforehand
-                        | _ -> invalidArg "program" (sprintf "unknown identifier")
+                        | Some (Uninitialized _) -> invalidArg "program" (sprintf "using uninitialized binding: %A" id) // TODO only crash if couldn't initialize beforehand
+                        | _ -> invalidArg "program" (sprintf "unknown identifier: %A" id)
 
             // First, insert all local bindings into the current dynamic environment
             let env = dynamicEnvironment.Append (uninitBindings localBindings)

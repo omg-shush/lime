@@ -16,6 +16,9 @@ Echo = [ subroutine ]
     else if msg == "hello" then
         "Hi! I'm a computer!" -> dotnet.WriteLine
         Echo!
+    else if msg == "goodbye" then
+        "No don't leave!! ;(" -> dotnet.WriteLine
+        Echo!
     else
         "unrecognized command" -> dotnet.WriteLine
         Echo!
