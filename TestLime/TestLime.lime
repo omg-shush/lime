@@ -6,7 +6,7 @@
  * hello    Makes the computer say hi to you
  */
 
-prompt = [ string ] "$> "
+/*prompt = [ string ] "$> "
 
 Echo = [ subroutine ]
     prompt -> dotnet.Write
@@ -23,4 +23,22 @@ Echo = [ subroutine ]
         "unrecognized command" -> dotnet.WriteLine
         Echo!
 
-Echo!
+WriteLine2019 = [ subroutine ]
+    "Programmer:" -> dotnet.WriteLine
+    "Computer: " -> dotnet.Write
+    in -> dotnet.WriteLine*/
+
+WriteAllLines = [ subroutine ]
+    if in == unit then
+        unit
+    else
+        head = in -> first
+        tail = in -> second
+        head -> dotnet.WriteLine
+        tail -> WriteAllLines
+
+//"noot noot" -> WriteLine2019
+
+("sup dawg", ("line 2: electric boogaloo", ("line 3: w h a t", unit))) -> WriteAllLines
+
+//Echo!

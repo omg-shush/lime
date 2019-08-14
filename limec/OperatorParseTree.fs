@@ -12,7 +12,7 @@ type OperationForm<'operation> =
     | Argument
 
 /// Represents which direction an operation associates in
-type OperationAssociativity = LeftAssociative | RightAssociative
+type OperationAssociativity = LeftAssociative | RightAssociative | NonAssociative
 
 /// Associates an operation with its type
 type Operation<'operation when 'operation: equality> =
@@ -43,6 +43,7 @@ type OperatorParseTree<'alphabet, 'operation when 'operation: equality> =
     {
         data: OperatorParseData<'alphabet, 'operation>
         children: OperatorParseTree<'alphabet, 'operation> list
+        size: int
     }
 
     member private this.toString (indent: string) =
@@ -53,9 +54,6 @@ type OperatorParseTree<'alphabet, 'operation when 'operation: equality> =
 
     override this.ToString () =
         this.toString ""
-
-    member this.Size =
-        List.fold (fun sum (pt: OperatorParseTree<_,_>) -> sum + pt.Size) 1 this.children
 
 module OperatorParseTree =
 
@@ -84,7 +82,8 @@ module OperatorParseTree =
                                             // Keep same operation data
                                             data = workingList.[0].data;
                                             // Add right subtree as child of this operation
-                                            children = List.singleton workingList.[1]
+                                            children = List.singleton workingList.[1];
+                                            size = 1 + workingList.[1].size;
                                         }
                                     // Append new subtree to parsed version of rest of list
                                     parseListForPrefixOperation (parsedSubtree :: workingList.Tail.Tail)
@@ -111,7 +110,8 @@ module OperatorParseTree =
                                             // Keep same operation data
                                             data = workingList.[1].data;
                                             // Add left subtree as child of this operation
-                                            children = List.singleton workingList.[0]
+                                            children = List.singleton workingList.[0];
+                                            size = 1 + workingList.[0].size;
                                         }
                                     // Append new subtree to parsed version of rest of list
                                     parseListForPostfixOperation (parsedSubtree :: workingList.Tail.Tail)
@@ -138,7 +138,8 @@ module OperatorParseTree =
                                             // Keep same operation data
                                             data = workingList.[1].data;
                                             // Add left and right subtrees as children of this operation
-                                            children = workingList.[0] :: (List.singleton workingList.[2])
+                                            children = workingList.[0] :: (List.singleton workingList.[2]);
+                                            size = 1 + workingList.[0].size + workingList.[2].size;
                                         }
                                     // Append new subtree to parsed version of rest of list
                                     parseListForInfixOperation (parsedSubtree :: workingList.Tail.Tail.Tail)
@@ -175,8 +176,9 @@ module OperatorParseTree =
                                     // Replace self with parsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
                                     // NOTE: with nested parentheses, it's possible some elements of interiorOfCircumfix have already been parsed - need to calculate not just the
                                     // top node list's length, but the entire size!
-                                    let sizeOfInteriorOfCircumfix = interiorOfCircumfix |> List.fold (fun sum pt -> sum + pt.Size) 0
-                                    parseListForCircumfixOperation (interiorOfCircumfixParseTree :: (List.skip (sizeOfInteriorOfCircumfix + 2) workingList))
+                                    let sizeOfInteriorOfCircumfix = interiorOfCircumfixParseTree.size + 2 // Add size of parentheses to contained parse tree
+                                    let interiorOfCircumfixParseTree = { interiorOfCircumfixParseTree with size = sizeOfInteriorOfCircumfix }
+                                    parseListForCircumfixOperation (interiorOfCircumfixParseTree :: (List.skip sizeOfInteriorOfCircumfix workingList))
                                 else if (op = nextOperationRight) then
                                     // Closing parenthesis!
                                     // Assume was recursively called after finding an opening parenthesis,
@@ -206,11 +208,15 @@ module OperatorParseTree =
                                     // Get the interior of the circumfix operator
                                     let interiorOfCircumliteral = parseListForCircumliteralOperation workingList.Tail
 
-                                    // Add it as self's children
-                                    let circumliteralWithInteriorInherited = { workingList.[0] with children = interiorOfCircumliteral; }
+                                    let sizeOfInteriorOfCircumliteral = 2 + (interiorOfCircumliteral |> Seq.map (fun pt -> pt.size) |> Seq.reduce (+))
+
+                                    // Add it as self's children, adding size of self + closing counterpart of self
+                                    let circumliteralWithInteriorInherited = {
+                                        workingList.[0] with children = interiorOfCircumliteral; size = sizeOfInteriorOfCircumliteral;
+                                    }
 
                                     // Inherit unparsed interior and append to parsed version of rest of list (skipping interior, +2 for left and right brackets)
-                                    parseListForCircumliteralOperation (circumliteralWithInteriorInherited :: (List.skip (interiorOfCircumliteral.Length + 2) workingList))
+                                    parseListForCircumliteralOperation (circumliteralWithInteriorInherited :: (List.skip sizeOfInteriorOfCircumliteral workingList))
                                 else if (op = nextOperationRight) then
                                     // Closing parenthesis!
                                     // Assume was recursively called after finding an opening parenthesis,
@@ -223,7 +229,7 @@ module OperatorParseTree =
                     // Run through workingInput, looking for instances of nextOperationLeft
                     parseListForCircumliteralOperation workingInput
 
-                | Adjacent nextOperation ->
+                | Adjacent nextOperation -> // Use this when not the lowest precedence
                     // Recursively reads through the workingList and substitutes each instance of two adjacent complete subtrees,
                     // where complete means either atomic or operational but already parsed, with the correct operation
                     // as if it were inserted between them
@@ -247,7 +253,8 @@ module OperatorParseTree =
                                         // Insert adjacency operation data
                                         data = Operation nextOperation;
                                         // Add left and right subtrees as children of this operation
-                                        children = workingList.[0] :: (List.singleton workingList.[1])
+                                        children = workingList.[0] :: (List.singleton workingList.[1]);
+                                        size = workingList.[0].size + workingList.[1].size;
                                     }
                                 // Append new subtree to rest of list and re-parse the entire thing
                                 parseListForAdjacentOperation (parsedSubtree :: workingList.Tail.Tail)
@@ -257,7 +264,7 @@ module OperatorParseTree =
                     // Run through workingInput, looking for instances of valid adjacencies
                     parseListForAdjacentOperation workingInput
 
-                | RemainingAdjacent nextOperation ->
+                | RemainingAdjacent nextOperation -> // Use this when IS the lowest precedence
                     // Recursively reads through the workingList and substitutes each instance of any two adjacent items
                     // with nextOperation
                     let rec parseListForRemainingAdjacentOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
@@ -270,7 +277,8 @@ module OperatorParseTree =
                                     // Insert adjacency operation data
                                     data = Operation nextOperation;
                                     // Add left and right subtrees as children of this operation
-                                    children = workingList.[0] :: (List.singleton workingList.[1])
+                                    children = workingList.[0] :: (List.singleton workingList.[1]);
+                                    size = workingList.[0].size + workingList.[1].size
                                 }
                             // Append new subtree to rest of list and re-parse the entire thing
                             parseListForRemainingAdjacentOperation (parsedSubtree :: workingList.Tail.Tail)
@@ -296,7 +304,7 @@ module OperatorParseTree =
                     let opLength = operationPattern.Length
                     let workingInput, operationPattern =
                         match associativity with
-                        | LeftAssociative -> workingInput, operationPattern
+                        | LeftAssociative | NonAssociative -> workingInput, operationPattern
                         | RightAssociative -> List.rev workingInput, List.rev operationPattern
                     // Recursively reads through the workingList and substitutes each instance of the Customfix operation
                     let rec parseListForCustomfixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
@@ -305,39 +313,52 @@ module OperatorParseTree =
                         else
                             let rec tryMatchCustomOp (customOp: OperationForm<'operation> list)
                                                         (workingList: OperatorParseTree<'alphabet, 'operation> list)
-                                                        : OperatorParseTree<'alphabet, 'operation> list Option =
+                                                        : OperatorParseTree<'alphabet, 'operation> list Option * int =
                                 if (workingList.Length < customOp.Length) then
-                                    None // Too small to contain the custom operation
+                                    None, 0 // Too small to contain the custom operation
                                 else
                                     match customOp, List.tryHead workingList with
-                                    | [], _ -> Some [] // Entire customOp has been matched successfully
+                                    | [], _ -> // Entire customOp has been matched successfully
+                                        match associativity with
+                                        | LeftAssociative | RightAssociative ->
+                                            Some [], 0
+                                        | NonAssociative ->
+                                            // Try to match more copies of this operation
+                                            match tryMatchCustomOp operationPattern.Tail workingList with // since operationPattern.Head is just this, no need to re-match it, TODO assuming it's an Argument (it better be)
+                                            | Some moreArgs, i -> Some moreArgs, i
+                                            | None, _ -> Some [], 0
                                     | Form f :: opTail, Some { data = Operation o } when f = o ->
-                                        tryMatchCustomOp opTail workingList.Tail // OK, this Form (aka keyword/operation) matches, keep on matching
+                                        match tryMatchCustomOp opTail workingList.Tail with // OK, this Form (aka keyword/operation) matches, keep on matching
+                                        | None, _ -> None, 0
+                                        | Some _ as children, i -> children, i + 1
                                     | Argument :: opTail, Some _ ->
                                         match tryMatchCustomOp opTail workingList.Tail with // Does the rest of the custom operator match?
-                                        | Some argsTail -> Some (workingList.Head :: argsTail) // If so, save this argument as part of the operator
-                                        | None -> None // Otherwise, no match here
-                                    | _ -> None
+                                        | Some argsTail, i -> Some (workingList.Head :: argsTail), i + 1 // If so, save this argument as part of the operator
+                                        | None, _ -> None, 0 // Otherwise, no match here
+                                    | _ -> None, 0
                             match tryMatchCustomOp operationPattern workingList with
-                            | Some children ->
+                            | Some children, subtreesMatched ->
                                 // Construct subtree with this operation at the root
                                 let parsedSubtree =
                                     {
-                                        // Insert adjacency operation data
+                                        // Insert custom operation data
                                         data = Operation nextOperation;
                                         // Add left and right subtrees as children of this operation
                                         children =
                                             match associativity with
-                                            | LeftAssociative -> children
+                                            | LeftAssociative | NonAssociative -> children
                                             | RightAssociative -> List.rev children
+                                        size = List.fold (fun sum c -> sum + c.size) (subtreesMatched - children.Length) children; // Calculate # raw elements consumed, accounting for Forms and children
                                     }
-                                parseListForCustomfixOperation (parsedSubtree :: (List.skip opLength workingList)) // parsedSubtree is cons'd on BEFORE re-parsing, so that chains eg. if-else if-else can work
-                            | None ->
+                                // parsedSubtree is cons'd on BEFORE re-parsing, so that chains eg. if-else if-else or (_, (_, _)) can work
+                                //printfn "subtreesMatched: %d of %A" subtreesMatched nextOperation
+                                parseListForCustomfixOperation (parsedSubtree :: (List.skip subtreesMatched workingList))
+                            | None, _ ->
                                 // No match here, try to move on
                                 workingList.Head :: parseListForCustomfixOperation workingList.Tail
 
                     match associativity with
-                    | LeftAssociative -> parseListForCustomfixOperation workingInput
+                    | LeftAssociative | NonAssociative -> parseListForCustomfixOperation workingInput
                     | RightAssociative -> parseListForCustomfixOperation workingInput |> List.rev
 
         ) atomizedInput opPriority
@@ -349,8 +370,8 @@ module OperatorParseTree =
             |> List.map (
                 fun inputItem ->
                     match inputItem with
-                    | Choice1Of2 atom -> { data = atom |> Atom; children = List.empty }
-                    | Choice2Of2 op -> { data = op |> Operation; children = List.empty }
+                    | Choice1Of2 atom -> { data = atom |> Atom; children = List.empty; size = 1 }
+                    | Choice2Of2 op -> { data = op |> Operation; children = List.empty; size = 1 }
             )
 
         // Parse that list of atoms, operation by operation

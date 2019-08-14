@@ -96,7 +96,8 @@ module AbstractSyntaxFile =
                         Operation operator, bs
                     | _ -> invalidArg parameters.input "Invalid file"
                 let children, bs = readList (readOperatorParseTree atomReader operatorReader) bs
-                { OperatorParseTree.data = data; children = children }, bs
+                let size, bs = readInt bs
+                { OperatorParseTree.data = data; children = children; size = size }, bs
 
             let cpLength, bs = readInt bs
             let varLength, bs = readInt bs
@@ -169,11 +170,11 @@ module AbstractSyntaxFile =
             let writeKeyValue (keyWriter: 'k -> byte list) (valueWriter: 'v -> byte list) ({ key = k; value = v }: KeyValue<'k, 'v>) =
                 List.append (keyWriter k) (valueWriter v)
 
-            let rec writeOperatorParseTree (atomWriter: 'a -> byte list) (operatorWriter: 'b -> byte list) ({ data = d; children = c }: OperatorParseTree<'a, 'b>) =
+            let rec writeOperatorParseTree (atomWriter: 'a -> byte list) (operatorWriter: 'b -> byte list) ({ data = d; children = c; size = s }: OperatorParseTree<'a, 'b>) =
                 let dataBytes =
                     match d with
-                    | Atom a -> List.append (List.singleton Byte.MaxValue) (atomWriter a)
-                    | Operation o -> List.append (List.singleton Byte.MinValue) (operatorWriter o)
+                    | Atom a -> List.concat [ List.singleton Byte.MaxValue; atomWriter a; writeInt s ]
+                    | Operation o -> List.concat [ List.singleton Byte.MinValue; operatorWriter o; writeInt s ]
                 List.append dataBytes (writeList (writeOperatorParseTree atomWriter operatorWriter) c)
 
             let cpBytes = writeCodePosition cp
