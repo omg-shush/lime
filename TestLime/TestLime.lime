@@ -22,6 +22,8 @@ Echo = [ subroutine ]
     else
         "unrecognized command" -> dotnet.WriteLine
         Echo!
+        
+//Echo!
 
 WriteLine2019 = [ subroutine ]
     "Programmer:" -> dotnet.WriteLine
@@ -40,6 +42,24 @@ WriteAllLines = [ subroutine ]
         head -> dotnet.WriteLine
         tail -> WriteAllLines
 
-("sup dawg"; "line 2: electric boogaloo"; "line 3: w h a t") -> WriteAllLines
+//("sup dawg"; "line 2: electric boogaloo"; "line 3: w h a t") -> WriteAllLines
 
-//Echo!
+Filter = [ subroutine ]
+    (predicate, list) = in
+    if list == unit then
+        unit
+    else
+        head, tail = list
+        if head -> predicate then
+            head, ((predicate, tail) -> Filter)
+        else
+            (predicate, tail) -> Filter
+        
+IsntHello = [ subroutine ]
+    true, false = (unit == unit), (unit == "false")
+    if in == "hello" then
+        false
+    else
+        true
+    
+(IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> Filter -> WriteAllLines
