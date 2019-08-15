@@ -109,7 +109,10 @@ and LlamaLiteral =
     | LlamaInt of int64
     | LlamaDouble of double
     | LlamaBool of bool
-and LlamaExpression = LlamaExpression of OperatorParseTree<LlamaLiteral, LlamaIdentifier>
+and LlamaExpression =
+    | LlamaExpression of OperatorParseTree<LlamaLiteral, LlamaIdentifier>
+    (*static member OfVariable var =
+        LlamaExpression { data = Operation var; children = []; size = -1 }*)
 and AbstractTypeTree =
     | AbstractTypeTree of CodePosition * Association<LlamaIdentifier, LlamaType> * Stack<Choice<LlamaLiteral, LlamaIdentifier> list>
     member this.Append att =

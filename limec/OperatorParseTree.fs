@@ -39,12 +39,26 @@ type OperatorParseData<'alphabet, 'operation when 'operation: equality> =
 
 /// Represents a node in a parse tree, containing both its own data
 /// and a list of its child nodes
-type OperatorParseTree<'alphabet, 'operation when 'operation: equality> =
+[<CustomEquality; CustomComparison>]
+type OperatorParseTree<'alphabet, 'operation when 'operation: equality and 'operation: comparison and 'alphabet: equality and 'alphabet: comparison> =
     {
         data: OperatorParseData<'alphabet, 'operation>
         children: OperatorParseTree<'alphabet, 'operation> list
         size: int
     }
+
+    interface System.IComparable with
+        member this.CompareTo other =
+            let other = other :?> OperatorParseTree<'alphabet, 'operation>
+            let compD = compare this.data other.data
+            if compD = 0 then compare this.children other.children else compD
+
+    override this.Equals other =
+        let other = other :?> OperatorParseTree<'alphabet, 'operation>
+        this.data = other.data && this.children = other.children
+
+    override this.GetHashCode () =
+        this.data.GetHashCode () + this.children.GetHashCode ()
 
     member private this.toString (indent: string) =
         indent

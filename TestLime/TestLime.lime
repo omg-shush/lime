@@ -32,8 +32,9 @@ WriteAllLines = [ subroutine ]
     if in == unit then
         unit
     else
-        head = in -> first
-        tail = in -> second
+        //head = (1, in) -> nth
+        //tail = (2, in) -> nth
+        head, tail = in
         head -> dotnet.WriteLine
         tail -> WriteAllLines
 

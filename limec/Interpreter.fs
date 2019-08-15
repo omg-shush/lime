@@ -63,7 +63,7 @@ module Interpreter =
                         | ValueFun (itype, otype, ast) -> //when itype = lhs.Type -> TODO typecheck when it makes sense
                             // Acceptable function
                             interpret ast (env.Put (LlamaName "in") (Initialized lhs))
-                        | ValueLibFun (itype, otype, func) when itype = lhs.Type ->
+                        | ValueLibFun (itype, otype, func) -> // when itype = lhs.Type -> TODO typecheck when we have types
                             lhs |> func, env // TODO For now, assuming lib functions don't affect the environment
                         | _ ->
                             // Not a function
@@ -71,6 +71,12 @@ module Interpreter =
                             | Operation (LlamaName variable) -> // TODO ensure value is mutable - will require retaining type information of values?
                                 Unit, (env.Put (LlamaName variable) (Initialized lhs))
                             | _ -> invalidArg "rhs" "can't transfer data into rhs"
+                    | LlamaName "nth" ->
+                        ValueLibFun (TupleType -1, UnitType, (fun (v: Value) ->
+                            match v with
+                            | ValueTuple (2, [ ValueInt i; ValueTuple (n, t) ]) when (int i) <= n -> List.item ((int i) - 1) t
+                            | _ -> invalidArg "input" "nth expected a tuple (index, tuple)"
+                        )), env
                     | LlamaName "first" ->
                         ValueLibFun (TupleType 2, UnitType, (fun (i: Value) -> match i with | ValueTuple (2, [ v; _ ]) -> v | _ -> invalidArg "input" "first: bad argument type")), env
                     | LlamaName "second" ->
