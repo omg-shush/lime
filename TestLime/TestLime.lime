@@ -27,6 +27,8 @@ WriteLine2019 = [ subroutine ]
     "Programmer:" -> dotnet.WriteLine
     "Computer: " -> dotnet.Write
     in -> dotnet.WriteLine*/
+    
+//"noot noot" -> WriteLine2019
 
 WriteAllLines = [ subroutine ]
     if in == unit then
@@ -38,8 +40,6 @@ WriteAllLines = [ subroutine ]
         head -> dotnet.WriteLine
         tail -> WriteAllLines
 
-//"noot noot" -> WriteLine2019
-
-("sup dawg", ("line 2: electric boogaloo", ("line 3: w h a t", unit))) -> WriteAllLines
+("sup dawg"; "line 2: electric boogaloo"; "line 3: w h a t") -> WriteAllLines
 
 //Echo!

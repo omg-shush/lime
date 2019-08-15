@@ -190,7 +190,9 @@ module SyntaxAnalyzer =
 
             Postfix (LlamaOperator "!")
 
-            Customfix (RightAssociative, LlamaOperator "$tuple", [ Argument; Form (LlamaOperator ","); Argument ])
+            Customfix (NonAssociative, LlamaOperator "$tuple", [ Argument; Form (LlamaOperator ","); Argument ])
+
+            Customfix (NonAssociative, LlamaOperator "$list", [ Argument; Form (LlamaOperator ";"); Argument ])
 
             Customfix (RightAssociative, LlamaOperator "$if-then-else", [ Form (LlamaName "if"); Argument; Form (LlamaName "then"); Argument; Form (LlamaName "else"); Argument ])
 

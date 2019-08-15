@@ -112,6 +112,11 @@ module Interpreter =
                     | LlamaOperator "$tuple" ->
                         ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env // TODO assuming env stays the same
 
+                    | LlamaOperator "$list" ->
+                        (List.foldBack (fun elem lis ->
+                            ValueTuple (2, [ evaluateExpression env elem |> fst; lis ])
+                        ) expr.children Unit), env // TODO assuming env stays the same, right??
+
                     | LlamaOperator "$init" ->
                         let id = match expr.children.[0].data with Operation llamaId -> llamaId | _ -> invalidArg "init" "Not an id"
                         let llama = match env.Get id with Some (Uninitialized expr) -> expr | _ -> invalidArg "init" "Duplicate initialization"
