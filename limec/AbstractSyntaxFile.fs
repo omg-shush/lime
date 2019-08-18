@@ -95,8 +95,8 @@ module AbstractSyntaxFile =
                         let operator, bs = operatorReader bs
                         Operation operator, bs
                     | _ -> invalidArg parameters.input "Invalid file"
-                let children, bs = readList (readOperatorParseTree atomReader operatorReader) bs
                 let size, bs = readInt bs
+                let children, bs = readList (readOperatorParseTree atomReader operatorReader) bs
                 { OperatorParseTree.data = data; children = children; size = size }, bs
 
             let cpLength, bs = readInt bs
@@ -175,7 +175,8 @@ module AbstractSyntaxFile =
                     match d with
                     | Atom a -> List.concat [ List.singleton Byte.MaxValue; atomWriter a; writeInt s ]
                     | Operation o -> List.concat [ List.singleton Byte.MinValue; operatorWriter o; writeInt s ]
-                List.append dataBytes (writeList (writeOperatorParseTree atomWriter operatorWriter) c)
+                let childrenBytes = writeList (writeOperatorParseTree atomWriter operatorWriter) c
+                List.append dataBytes childrenBytes
 
             let cpBytes = writeCodePosition cp
             let varBytes = writeList (writeKeyValue writeLlamaIdentifier writeLlama) vars.List
