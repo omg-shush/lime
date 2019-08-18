@@ -2,7 +2,7 @@
 
 module SyntaxAnalyzer =
 
-    let Analyze (controls: Parameters) (ParsedCode code: ParsedCode) : AbstractSyntaxTree =
+    let Analyze (controls: Parameters) (ParsedCode code: ParsedCode) : Llama =
         // Extracts a type list from a given TypeHint parse tree
         let typFromTHint tHint =
             match tHint with
@@ -36,14 +36,14 @@ module SyntaxAnalyzer =
 
         /// Translates the raw ParseTree into an AbstractTypeTree, finding the definitions and relationships between types and bindings
         /// while leaving actual code expressions untouched
-        let rec analyzeTypes (code: ParseTree<GrammarElement, CodePosition * Lexeme>) : AbstractTypeTree =
+        let rec analyzeTypes (code: ParseTree<GrammarElement, CodePosition * Lexeme>) : LlamaType =
             match code with
 
             // Takes a unitary expression parse tree and flattens it into a list, ready for operator parsing
             | Terminal (Expression, _) | Nonterminal (Expression, _) as exprTree ->
                 let flatExpr = exprTree |> serializeExpression |> prepareExpression
                 let cp = fst (List.last flatExpr)
-                AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) // TODO carry individual lexeme positions into the expression parser?
+                { typ = []; def = AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push (List.unzip flatExpr |> snd)) } // TODO carry individual lexeme positions into the expression parser?
 
             | Nonterminal (TypeHint, _) ->
                 invalidArg "code" "Type hint is lonely! Not associated with any expression"
@@ -51,31 +51,26 @@ module SyntaxAnalyzer =
             | Nonterminal (Statement, [ Nonterminal (TypeHint, _) as typeHint; Nonterminal (Statement, _) as stmt ])
             | Nonterminal (Statement, [ Nonterminal (TypeHint, _) as typeHint; Terminal (LineBreak, _); Nonterminal (Statement, _) as stmt ]) ->
                 // First, analyze the child statement
-                let (AbstractTypeTree (cp, _, _)) as analyzedStmt = analyzeTypes stmt
-                // Then, wrap it in an ATT to store the type hint, which will evaluate to the stmt being hinted at
-                let dummyName = LlamaName ("$" + (Counter.next ()).ToString ())
-                AbstractTypeTree (
-                    cp,
-                    Association.Empty.Put dummyName { typ = typFromTHint typeHint; def = analyzedStmt },
-                    Stack.Empty.Push [ Choice2Of2 (LlamaOperator "("); Choice2Of2 (LlamaOperator "$init"); Choice2Of2 dummyName; Choice2Of2 dummyName; Choice2Of2 (LlamaOperator ")") ]
-                )
+                let { LlamaType.typ = typ; def = def } = analyzeTypes stmt
+                // Then, append the type hint
+                { LlamaType.typ = typ @ typFromTHint typeHint; def = def }
 
             | Nonterminal (Statement, [ expr; Terminal (LineBreak, _) ]) ->
                 analyzeTypes expr
 
             | Nonterminal (Statement, [ Terminal (DelimitBeginBlock, _); expr; Terminal (DelimitEndBlock, _); Terminal (LineBreak, _) ]) ->
-                let (AbstractTypeTree (cp, _, _) as contained) = analyzeTypes expr
-                let dummyName = LlamaName ("$" + (Counter.next ()).ToString ())
-                AbstractTypeTree (
-                    cp,
-                    Association.Empty.Put dummyName { typ = []; def = contained },
-                    Stack.Empty.Push [ Choice2Of2 (LlamaOperator "("); Choice2Of2 (LlamaOperator "$init"); Choice2Of2 dummyName; Choice2Of2 dummyName; Choice2Of2 (LlamaOperator ")") ]
-                )
+                let { LlamaType.typ = t; def = AbstractTypeTree (cp, bindings, code) } = analyzeTypes expr
+                // Surround contents of block in implicit parentheses, to ensure operators e.g. if-then-else can't break it apart
+                { LlamaType.typ = t; def =
+                    AbstractTypeTree (cp, bindings,
+                        ((Stack.Empty.Push [ Choice2Of2 (LlamaOperator "(") ]).Append code).Push [ Choice2Of2 (LlamaOperator ")") ]
+                    )
+                }
 
             | Nonterminal (Statement, [ stmt1; stmt2 ]) ->
-                let att1 = analyzeTypes stmt1
-                let att2 = analyzeTypes stmt2
-                att1.Append att2
+                let { LlamaType.typ = t1; def = d1 } = analyzeTypes stmt1
+                let { LlamaType.typ = t2; def = d2 } = analyzeTypes stmt2
+                { LlamaType.typ = t1 @ t2; def = d1.Append d2 } // TODO appending types makes sense??
 
             | Nonterminal (Statement, [ lhs; bindingType; rhs ]) ->
                 let lhsOps = [
@@ -90,8 +85,8 @@ module SyntaxAnalyzer =
                     |> OperatorParseTree.Parse lhsOps
 
                 let rec bindPattern (pat: OperatorParseTree<LlamaLiteral, LlamaIdentifier>)
-                                    (value: AbstractTypeTree)
-                                    (types: LlamaIdentifier list)
+                                    { LlamaType.typ = typ; def = (value: AbstractTypeTree) }
+                                    (additionalTypes: LlamaIdentifier list)
                                     (cp: CodePosition)
                                     (bindings: Association<LlamaIdentifier, LlamaType>)
                                     (code: Choice<LlamaLiteral, LlamaIdentifier> list)
@@ -102,8 +97,8 @@ module SyntaxAnalyzer =
                         let finalBindings, finalCode, _ =
                             List.fold (fun (bindings, code, index) child ->
                                 let bindings', code' =
-                                    bindPattern child (
-                                        AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push [
+                                    bindPattern child { // TODO what to do about these types?? how to split them among tuples?
+                                        LlamaType.typ = typ @ additionalTypes; def = AbstractTypeTree (cp, Association.Empty, Stack.Empty.Push [
                                             Choice2Of2 (LlamaOperator "(")
                                             Choice2Of2 (LlamaOperator "(")
                                             Choice1Of2 (LlamaInt index)
@@ -113,17 +108,17 @@ module SyntaxAnalyzer =
                                             Choice2Of2 (LlamaOperator "->")
                                             Choice2Of2 (LlamaName "nth")
                                             Choice2Of2 (LlamaOperator ")")
-                                        ])) types cp bindings code
+                                        ])} additionalTypes cp bindings code
                                 bindings', code', index + 1L
                             ) (
-                                Association.Empty.Put dummyName { typ = []; def = value },
+                                Association.Empty.Put dummyName { typ = typ @ additionalTypes; def = value },
                                 [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 dummyName ],
                                 1L
                             ) pat.children
                         finalBindings, finalCode
 
                     | Operation (LlamaName _ as var) ->
-                        bindings.Put var { typ = types; def = value },
+                        bindings.Put var { typ = typ @ additionalTypes; def = value },
                         code @ [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 var ]
                     | _ -> invalidArg "code" "Invalid pattern match"
                 //let cp, varName = match lhs with Terminal (Expression, (cp, Identifier name)) -> cp, LlamaName name | _ -> To.Do() // TODO pattern matching / custom operators
@@ -133,15 +128,17 @@ module SyntaxAnalyzer =
                     | Terminal (OperationColon, _) -> [ LlamaName "mutable" ]
                     | Terminal (OperationEquals, _) -> [ LlamaName "immutable" ]
                     | _ -> To.Do() // TODO different binding types?
+                let analyzedRhs = analyzeTypes rhs
                 let bindings, code =
                     bindPattern pattern (analyzeTypes rhs) additionalTypes (CodePosition.Start (*TODO*)) Association.Empty List.Empty
-                AbstractTypeTree (CodePosition.Start (*TODO*), bindings, Stack.Empty.Push code)
+                { LlamaType.typ = []; def = AbstractTypeTree (CodePosition.Start (*TODO*), bindings, Stack.Empty.Push code) }
 
             | _ -> invalidArg "code" (sprintf "Improper parse tree: %A" code)
 
         /// Given that all types have been parsed to the extent that we know how they behave within expressions,
         /// we now parse each expression into a LlamaExpression to complete the AbstractSyntaxTree
-        let rec analyzeExpressions (visibleOperations: Operation<LlamaIdentifier> list) (AbstractTypeTree (cp, types, code): AbstractTypeTree) =
+        let rec analyzeExpressions (visibleOperations: Operation<LlamaIdentifier> list)
+                                   { LlamaType.typ = typ; def = AbstractTypeTree (cp, types, code) } =
             /// Returns a Operation Option. If some, add to the operator priority list; if none, ignore
             let getOp (kvpair: KeyValue<LlamaIdentifier, LlamaType>) =
                 match (kvpair.key, kvpair.value) with
@@ -169,13 +166,29 @@ module SyntaxAnalyzer =
             // Next, recurse over all sub-bindings
             let parsedTypes =
                 List.map (fun (kvpair: KeyValue<LlamaIdentifier, LlamaType>) ->
-                    kvpair.key, { Llama.typ = kvpair.value.typ; def = analyzeExpressions visibleOps kvpair.value.def } // K, V tuple
+                    kvpair.key, analyzeExpressions visibleOps kvpair.value // K, V tuple
                 ) types.KeyValueSet
                 |> Association.Empty.PutAll
 
-            AbstractSyntaxTree (cp, parsedTypes, parsedCode)
+            { Llama.typ = typ; def = AbstractSyntaxTree (cp, parsedTypes, parsedCode) }
 
-        let att = code |> analyzeTypes
+        let rec removeRedundantTrees { LlamaType.typ = parentTyp; def = AbstractTypeTree (cp, bindings, code): AbstractTypeTree } : LlamaType =
+            match bindings.Array, code.Array with
+            | [| { key = key; value = { LlamaType.typ = subTyp; def = subdefinition } } |],
+                [| [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 name ] |] when key = name ->
+                    removeRedundantTrees { typ = parentTyp @ subTyp; def = subdefinition }
+            | _ ->
+                { LlamaType.typ = parentTyp; def =
+                    AbstractTypeTree (
+                        cp,
+                        bindings.Array |> Array.map (fun { key = k; value = v } ->
+                            { key = k; value = removeRedundantTrees v }
+                        ) |> Association.Empty.InsertAll,
+                        code
+                    )
+                }
+
+        let att = code |> analyzeTypes |> removeRedundantTrees
 
         let builtinOperations = [
             Circumfix (LlamaOperator "(", LlamaOperator ")")

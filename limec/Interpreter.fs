@@ -3,7 +3,7 @@
 module Interpreter =
 
     type ValueType =
-        | UnitType | StringType | CharType | IntType | DoubleType | BoolType | FunType of ValueType * ValueType | TupleType of int
+        | UnitType | StringType | CharType | IntType | DoubleType | BoolType | ClosureType of ValueType * ValueType | TupleType of int | ModuleType
 
     type Value =
         | Unit
@@ -12,9 +12,10 @@ module Interpreter =
         | ValueInt of int64
         | ValueDouble of double
         | ValueBool of bool
-        | ValueFun of ValueType * ValueType * AbstractSyntaxTree // TODO store input pattern within AST, otherwise don't know what inputs get put in what bindings!
+        | ValueClosure of ValueType * ValueType * Llama * LlamaIdentifier * Environment // TODO store input pattern within AST, otherwise don't know what inputs get put in what bindings!
         | ValueLibFun of ValueType * ValueType * (Value -> Value)
         | ValueTuple of int * Value list // TODO add subtypes to tuple's type, not just number of elements
+        | ValueModule of Environment
 
         member this.Type =
             match this with
@@ -24,17 +25,18 @@ module Interpreter =
             | ValueInt _ -> IntType
             | ValueDouble _ -> DoubleType
             | ValueBool _ -> BoolType
-            | ValueFun (i, o, _) | ValueLibFun (i, o, _) -> FunType (i, o)
+            | ValueClosure (i, o, _, _, _) | ValueLibFun (i, o, _) -> ClosureType (i, o)
             | ValueTuple (n, _) -> TupleType n
+            | ValueModule _ -> ModuleType
 
-    type IdentifierValue =
+    and IdentifierValue =
         | Initialized of Value
         | Uninitialized of Llama
 
-    type Environment = Association<LlamaIdentifier, IdentifierValue>
+    and Environment = Association<LlamaIdentifier, IdentifierValue>
 
-    let Interpret (controls: Parameters) (ast: AbstractSyntaxTree) =
-        let rec interpret (AbstractSyntaxTree (codePosition, localBindings, LlamaExpression expression)) (dynamicEnvironment: Environment) : Value * Environment =
+    let Interpret (controls: Parameters) (llama: Llama) =
+        let rec interpret { Llama.typ = typ; def = AbstractSyntaxTree (codePosition, localBindings, LlamaExpression expression)} (dynamicEnvironment: Environment) : Value * Environment =
             // Wrap the LlamaIdentifier -> Llama into a LlamaIdentifier -> (Uninitialized Llama), to prepare for substituting each with initialized values when evaluated
             let uninitBindings (b: Association<LlamaIdentifier, Llama>) = b.List |> List.map (fun kvpair -> kvpair.key, Uninitialized kvpair.value) |> Association.Empty.PutAll
 
@@ -56,13 +58,13 @@ module Interpreter =
                         let rightVal, rightEnv = evaluateExpression leftEnv expr.children.[1]
                         rightVal, rightEnv
                     | LlamaOperator "->" -> // Since left-associative, guarenteed that rhs is (w/r/t (->) op) atomic, while lhs can be recursive
-                        // TODO Evaluate lhs first, then rhs; only matters if bindings can be made in either. Aka shouldn't matter, but idk yet
-                        let lhs, env = evaluateExpression env expr.children.[0]
-                        let rhs, env = evaluateExpression env expr.children.[1]
+                        let lhs, _ = evaluateExpression env expr.children.[0]
+                        let rhs, _ = evaluateExpression env expr.children.[1]
                         match rhs with
-                        | ValueFun (itype, otype, ast) -> //when itype = lhs.Type -> TODO typecheck when it makes sense
+                        | ValueClosure (itype, otype, llama, recursiveName, closureEnv) -> //when itype = lhs.Type -> TODO typecheck when it makes sense
                             // Acceptable function
-                            interpret ast (env.Put (LlamaName "in") (Initialized lhs))
+                            let result, _ = interpret llama ((closureEnv.Put (LlamaName "in") (Initialized lhs)).Put recursiveName (Initialized rhs))
+                            result, env // TODO should function be able to affect env?
                         | ValueLibFun (itype, otype, func) -> // when itype = lhs.Type -> TODO typecheck when we have types
                             lhs |> func, env // TODO For now, assuming lib functions don't affect the environment
                         | _ ->
@@ -113,6 +115,13 @@ module Interpreter =
                                 | _ -> invalidArg "input" "ReadLine: bad argument type"))
                             | _ -> invalidArg func "Unknown library function"
                             , env
+                        | { data = Operation moduleName; children = [] }, { data = Operation moduleMember; children = [] } ->
+                            match env.Get moduleName with
+                            | Some (Initialized (ValueModule moduleEnv)) ->
+                                match moduleEnv.Get moduleMember with
+                                | Some (Initialized value) -> value, env
+                                | _ -> invalidArg "code" (sprintf "%A is not a member of the module %A or has not been initialized yet" moduleMember moduleName)
+                            | _ -> invalidArg "code" (sprintf "Module %A does not exist or has not been initialized yet" moduleName)
                         | _ -> invalidArg "program" "Unknown lhs to dot" // TODO call functions within types
                     | LlamaOperator "$tuple" ->
                         ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env // TODO assuming env stays the same
@@ -127,16 +136,19 @@ module Interpreter =
                         let llama = match env.Get id with Some (Uninitialized expr) -> expr | _ -> invalidArg "init" "Duplicate initialization"
                         let value =
                             if List.contains (LlamaName "subroutine") llama.typ then // TODO replace hardcoded types/operators with global constants
-                                ValueFun (UnitType, UnitType, llama.def) // TODO actually typecheck (?) and use correct I/O types
+                                ValueClosure (UnitType, UnitType, llama, id, env) // TODO actually typecheck (?) and use correct I/O types
+                            elif List.contains (LlamaName "module") llama.typ then
+                                let _, resultEnv = interpret llama Association.Empty // TODO allow chained (?) module inheritance (?) what am i saying (?)
+                                ValueModule resultEnv
                             else
-                                interpret llama.def env |> fst // TODO find "public" bindings in sub-env and append to current env
+                                interpret llama env |> fst // TODO find "public" bindings in sub-env and append to current env (?)
                         Unit, (env.Put id (Initialized value))
 
-                    | LlamaOperator "!" ->
-                        let value, env = evaluateExpression env expr.children.[0] // TODO should we really keep the new env?
+                    | LlamaOperator "!" -> // TODO make this evaluate completed functions from "->" as well
+                        let value, _ = evaluateExpression env expr.children.[0] // TODO should it be possible to effect the environment?
                         match value with
-                        | ValueFun (UnitType, otype, func) ->
-                            interpret func env
+                        | ValueClosure (UnitType, otype, func, recursiveName, closureEnv) ->
+                            interpret func (closureEnv.Put recursiveName (Initialized value))
                         | ValueLibFun (UnitType, otype, func) ->
                             Unit |> func, env // TODO assume func doesn't change env
                         | _ -> invalidArg "!" "Not given a func"
@@ -168,8 +180,8 @@ module Interpreter =
                     | LlamaName _ | LlamaOperator _ as id ->
                         match env.Get id with
                         | Some (Initialized llama) -> llama, env
-                        | Some (Uninitialized _) -> invalidArg "program" (sprintf "using uninitialized binding: %A" id) // TODO only crash if couldn't initialize beforehand
-                        | _ -> invalidArg "program" (sprintf "unknown identifier: %A" id)
+                        | Some (Uninitialized _) -> invalidArg "program" (sprintf "%susing uninitialized binding: %A" (codePosition.ToString ()) id) // TODO only crash if couldn't initialize beforehand
+                        | _ -> invalidArg "program" (sprintf "%sunknown identifier: %A" (codePosition.ToString ()) id )
 
             // First, insert all local bindings into the current dynamic environment
             let env = dynamicEnvironment.Append (uninitBindings localBindings)
@@ -178,5 +190,5 @@ module Interpreter =
             evaluateExpression env expression
 
         Logger.Log Info "\n----------------------" controls
-        interpret ast (Association.Empty.PutAll [])
+        interpret llama (Association.Empty.PutAll [])
 

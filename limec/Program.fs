@@ -35,7 +35,7 @@ module Compiler =
         | Il -> To.Do()
         | Exe -> To.Do()
         | Intr ->
-            let ast =
+            let llama =
                 let header = Array.zeroCreate AbstractSyntaxFile.AST_HEADER.Length
                 let headerSize = (IO.File.OpenRead parameters.input).Read (header.AsSpan ())
                 if headerSize = header.Length && header = AbstractSyntaxFile.AST_HEADER then
@@ -56,12 +56,12 @@ module Compiler =
                     let parsed = Parser.Parse parameters lexed
                     Logger.Log Info (parsed.ToString ()) parameters
 
-                    let ast = SyntaxAnalyzer.Analyze parameters parsed
-                    Logger.Log Info (ast.ToString ()) parameters
+                    let llama = SyntaxAnalyzer.Analyze parameters parsed
+                    Logger.Log Info (llama.ToString ()) parameters
 
-                    ast
+                    llama
 
-            Interpreter.Interpret parameters ast |> ignore //|> printfn "Process returned with value `%A'"
+            Interpreter.Interpret parameters llama |> ignore //|> printfn "Process returned with value `%A'"
             ()
         
         0

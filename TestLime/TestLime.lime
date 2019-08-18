@@ -44,24 +44,25 @@ WriteAllLines = [ subroutine ]
 
 //("sup dawg"; "line 2: electric boogaloo"; "line 3: w h a t") -> WriteAllLines
 
-Filter = [ subroutine ]
-    (predicate, list) = in
-    if list == unit then
-        unit
-    else
-        head, tail = list
-        if head -> predicate then
-            head, ((predicate, tail) -> Filter)
+List = [ module ]
+    Filter = [ subroutine ]
+        (predicate, list) = in
+        if list == unit then
+            unit
         else
-            (predicate, tail) -> Filter
+            head, tail = list
+            if head -> predicate then
+                head, ((predicate, tail) -> Filter)
+            else
+                (predicate, tail) -> Filter
 
-Map = [ subroutine ]
-    mapper, list = in
-    if list == unit then
-        unit
-    else
-        head, tail = list
-        (head -> mapper), (mapper, tail) -> Map
+    Map = [ subroutine ]
+        mapper, list = in
+        if list == unit then
+            unit
+        else
+            head, tail = list
+            (head -> mapper), (mapper, tail) -> Map
         
 IsntHello = [ subroutine ]
     true, false = (unit == unit), (unit == "false")
@@ -72,6 +73,6 @@ IsntHello = [ subroutine ]
 
 QuoteString = [ subroutine ] "`" + in + "'"
     
-filtered = (IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> Filter
-mapped = (QuoteString, filtered) -> Map
+filtered = (IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> List.Filter
+mapped = (QuoteString, filtered) -> List.Map
 mapped -> WriteAllLines

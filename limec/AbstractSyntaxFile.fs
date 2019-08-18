@@ -6,8 +6,8 @@ module AbstractSyntaxFile =
 
     let AST_HEADER = 0xb0000000 |> BitConverter.GetBytes
 
-    let Read (parameters: Parameters) : AbstractSyntaxTree =
-        let rec readAst (bs: byte list) : AbstractSyntaxTree * byte list =
+    let Read (parameters: Parameters) : Llama =
+        let rec readLlama (bs: byte list) =
             let readInt (bs: byte list) =
                 let bytes = bs |> List.take 4 |> Array.ofList
                 BitConverter.ToInt32 (bytes, 0), List.skip 4 bs
@@ -74,11 +74,6 @@ module AbstractSyntaxFile =
                 let arr, bs = Array.zeroCreate length |> Array.mapFold (fun bs _ -> elementReader bs) bs
                 List.ofArray arr, bs
 
-            let readLlama (bs: byte list) =
-                let typ, bs = readList readLlamaIdentifier bs
-                let def, bs = readAst bs
-                { Llama.typ = typ; def = def }, bs
-
             let readKeyValue (keyReader: byte list -> 'k * byte list) (valueReader: byte list -> 'v * byte list) (bs: byte list) =
                 let key, bs = keyReader bs
                 let value, bs = valueReader bs
@@ -99,32 +94,36 @@ module AbstractSyntaxFile =
                 let children, bs = readList (readOperatorParseTree atomReader operatorReader) bs
                 { OperatorParseTree.data = data; children = children; size = size }, bs
 
-            let cpLength, bs = readInt bs
-            let varLength, bs = readInt bs
-            let codeLength, bs = readInt bs
-            let cp, bs = readCodePosition bs
-            let var, bs = readList (readKeyValue readLlamaIdentifier readLlama) bs |> (fun (vararr, bs) -> Association.Empty.InsertAll vararr, bs)
-            let code, bs = readOperatorParseTree readLlamaLiteral readLlamaIdentifier bs |> (fun (codeTree, bs) -> LlamaExpression codeTree, bs)
+            let rec readAst (bs: byte list) : AbstractSyntaxTree * byte list =
+                let cpLength, bs = readInt bs
+                let varLength, bs = readInt bs
+                let codeLength, bs = readInt bs
+                let cp, bs = readCodePosition bs
+                let var, bs = readList (readKeyValue readLlamaIdentifier readLlama) bs |> (fun (vararr, bs) -> Association.Empty.InsertAll vararr, bs)
+                let code, bs = readOperatorParseTree readLlamaLiteral readLlamaIdentifier bs |> (fun (codeTree, bs) -> LlamaExpression codeTree, bs)
 
-            AbstractSyntaxTree (cp, var, code), bs
+                AbstractSyntaxTree (cp, var, code), bs
+
+            let typ, bs = readList readLlamaIdentifier bs
+            let def, bs = readAst bs
+            { Llama.typ = typ; def = def }, bs
 
         let sw = System.Diagnostics.Stopwatch.StartNew ()
         let file = parameters.input |> IO.File.ReadAllBytes |> List.ofArray
         let header, bytes = List.take AST_HEADER.Length file, List.skip AST_HEADER.Length file
         if Array.ofSeq header = AST_HEADER then
-            let ast, remaining = readAst bytes
+            let llama, remaining = readLlama bytes
             if Seq.isEmpty remaining then
                 sw.Stop ()
                 printfn "Read %d bytes from %s in %f ms" (Seq.length bytes + AST_HEADER.Length) parameters.input sw.Elapsed.TotalMilliseconds
-                ast
+                llama
             else
                 invalidArg parameters.input "Invalid file"
         else
             invalidArg parameters.input "Invalid file"
 
-    let Write (parameters: Parameters) (program: AbstractSyntaxTree) =
-        let rec writeAst (AbstractSyntaxTree (cp, vars, LlamaExpression code): AbstractSyntaxTree) : byte list =
-
+    let Write (parameters: Parameters) (program: Llama) =
+        let rec writeLlama ({ typ = t; def = d }: Llama) =
             // Converts int to four-byte array
             let writeInt (i: int) =
                 BitConverter.GetBytes i |> List.ofArray
@@ -164,9 +163,6 @@ module AbstractSyntaxFile =
             let writeList (elementWriter: 'a -> byte list) (arr: 'a list) =
                 List.append (writeInt (List.length arr)) (List.collect elementWriter arr)
 
-            let writeLlama ({ typ = t; def = d }: Llama) =
-                List.append (writeList writeLlamaIdentifier t) (writeAst d)
-
             let writeKeyValue (keyWriter: 'k -> byte list) (valueWriter: 'v -> byte list) ({ key = k; value = v }: KeyValue<'k, 'v>) =
                 List.append (keyWriter k) (valueWriter v)
 
@@ -178,15 +174,17 @@ module AbstractSyntaxFile =
                 let childrenBytes = writeList (writeOperatorParseTree atomWriter operatorWriter) c
                 List.append dataBytes childrenBytes
 
-            let cpBytes = writeCodePosition cp
-            let varBytes = writeList (writeKeyValue writeLlamaIdentifier writeLlama) vars.List
-            let codeBytes = writeOperatorParseTree writeLlamaLiteral writeLlamaIdentifier code
+            let rec writeAst (AbstractSyntaxTree (cp, vars, LlamaExpression code): AbstractSyntaxTree) : byte list =
+                let cpBytes = writeCodePosition cp
+                let varBytes = writeList (writeKeyValue writeLlamaIdentifier writeLlama) vars.List
+                let codeBytes = writeOperatorParseTree writeLlamaLiteral writeLlamaIdentifier code
 
-            List.concat [ writeInt (List.length cpBytes); writeInt (List.length varBytes); writeInt (List.length codeBytes); cpBytes; varBytes; codeBytes ]
+                List.concat [ writeInt (List.length cpBytes); writeInt (List.length varBytes); writeInt (List.length codeBytes); cpBytes; varBytes; codeBytes ]
 
+            List.append (writeList writeLlamaIdentifier t) (writeAst d)
 
         let sw = System.Diagnostics.Stopwatch.StartNew ()
-        let bytes = writeAst program |> Array.ofList |> Array.append AST_HEADER
+        let bytes = writeLlama program |> Array.ofList |> Array.append AST_HEADER
         IO.File.WriteAllBytes (parameters.output, bytes)
         sw.Stop ()
         printfn "Wrote %d bytes to %s in %f ms" bytes.Length parameters.output sw.Elapsed.TotalMilliseconds
