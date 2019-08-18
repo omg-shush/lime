@@ -47,8 +47,11 @@ module Compiler =
                     Logger.Log Info (seqToString preprocessed) parameters
 
                     // Merge characters together into a flat sequence of lexemes
+                    let sw = System.Diagnostics.Stopwatch.StartNew ()
                     let lexed = Lexer.Lex parameters preprocessed
+                    sw.Stop ()
                     Logger.Log Info (tokToString lexed) parameters
+                    Logger.Log Info (sprintf "Finished lexing in %f ms" sw.Elapsed.TotalMilliseconds) parameters
 
                     let parsed = Parser.Parse parameters lexed
                     Logger.Log Info (parsed.ToString ()) parameters

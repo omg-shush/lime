@@ -26,9 +26,9 @@ module Preprocessor =
         let isWhitespace c =
             c = ' ' || c = '\r' || c = '\n'
 
-        let preprocessCommentsIntoWhitespace (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
+        let preprocessCommentsIntoWhitespace (input: (CodePosition * char) []) : (CodePosition * char) Stack =
             let output, _, potentialTrailingComment, potentialTrailingString =
-                List.fold (fun (output: (CodePosition * char) Stack, prevChar: char, inComment: Comment, inString: StringLiteral) (pos: CodePosition, nextChar: char) ->
+                Array.fold (fun (output: (CodePosition * char) Stack, prevChar: char, inComment: Comment, inString: StringLiteral) (pos: CodePosition, nextChar: char) ->
                     match prevChar, nextChar, inComment, inString with
                     // Entering states
                     | '/', '/', NoComment, NoString ->
@@ -71,7 +71,7 @@ module Preprocessor =
                         // Stay in string
                         Cons (output, (pos, nextChar)), nextChar, NoComment, inString // Stay in same type of string though
                     | _ -> Cons (output, (pos, nextChar)), nextChar, inComment, inString // TODO
-                ) (Stack.Empty, ' ', NoComment, NoString) (Stack.makeList input)
+                ) (Stack.Empty, ' ', NoComment, NoString) input
 
             // Check for dangling comment
             match potentialTrailingComment with
@@ -88,7 +88,7 @@ module Preprocessor =
 
         let preprocessIndentationIntoControlChars (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
             let output, remainingIndents, _ =
-                List.fold (fun (code: (CodePosition * char) Stack, indents: int list, currentIndent: int Option) (pos: CodePosition, nextChar: char) ->
+                Stack.fold (fun (code: (CodePosition * char) Stack, indents: int list, currentIndent: int Option) (pos: CodePosition, nextChar: char) ->
                     match currentIndent, nextChar with
                     | Some currentIndent, ' ' -> code, indents, Some (currentIndent + 1)
                     | _, '\n' -> Cons (code, (pos, nextChar)), indents, Some 0 // Reset indentation
@@ -120,7 +120,7 @@ module Preprocessor =
                                     code, reducedIndents, None
                             unindent code indents
                     | _ -> Cons (code, (pos, nextChar)), indents, None // Normal code characters
-                ) (Stack.Empty, List.Empty, Some 0) (Stack.makeList input)
+                ) (Stack.Empty, List.Empty, Some 0) input
 
             // Close any trailing scopes
             let output = List.fold (fun closedOutput _ -> Cons (closedOutput, (output.Top |> fst, '\r'))) output remainingIndents
@@ -129,19 +129,18 @@ module Preprocessor =
 
         let preprocessWhitespaceIntoMinimal (input: (CodePosition * char) Stack) : (CodePosition * char) Stack =
             let output, lastChar =
-                List.fold (fun (code: (CodePosition * char) Stack, lastChar: char) (pos: CodePosition, nextChar: char) ->
+                Stack.fold (fun (code: (CodePosition * char) Stack, lastChar: char) (pos: CodePosition, nextChar: char) ->
                     match lastChar, nextChar with
                     | ' ', '\n' -> Cons (code.Bottom, (pos, '\n')), nextChar // Replace previous whitespace with the newline
                     | ' ', ' ' | '\n', ' ' | '\n', '\n' -> code, nextChar // Skip this whitespace character
                     | _ -> Cons (code, (pos, nextChar)), nextChar // Keep code character
-                ) (Stack.Empty, '\n') (Stack.makeList input)
+                ) (Stack.Empty, '\n') input
 
             output
 
-        controls.input
-        |> IO.File.ReadAllText
-        |> List.ofSeq
-        |> List.mapFold (fun (cp: CodePosition) (c: char) ->
+        (controls.input
+        |> IO.File.ReadAllText).ToCharArray ()
+        |> Array.mapFold (fun (cp: CodePosition) (c: char) ->
             let nextCp =
                 match c with // Update code position for each character
                 | '\n' -> cp.NextLine
@@ -149,11 +148,9 @@ module Preprocessor =
             (cp, c), nextCp
         ) { CodePosition.Start with file = controls.input }
         |> fst
-        |> Stack.ofList
         |> preprocessCommentsIntoWhitespace
         |> preprocessIndentationIntoControlChars
         |> preprocessWhitespaceIntoMinimal
-        |> Stack.makeList
-        |> Seq.ofList
+        |> Stack.makeArray
         |> PreprocessedCode
 

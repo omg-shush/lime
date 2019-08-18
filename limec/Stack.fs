@@ -84,10 +84,57 @@ type Stack<'T> =
 module Stack =
 
     let Empty<'T> = Stack<'T>.EmptyStack
+    let isEmpty (s: Stack<'T>) = match s with EmptyStack -> true | Cons _ -> false
     let makeList (stack: Stack<'T>) : List<'T> = stack.List
-    let rec ofList (input: List<'T>) : Stack<'T> =
+    let makeArray (stack: Stack<'T>) : 'T [] = stack.Array
+    let ofList (input: List<'T>) : Stack<'T> =
         let rec ofList (stack: Stack<'T>) (append: List<'T>) =
             match append with
             | head :: tail -> ofList (Cons (stack, head)) tail
             | _ -> stack
         ofList Empty input
+    let ofArray (input: 'T []) : Stack<'T> =
+        Array.fold (fun stack e -> Cons (stack, e)) Empty input
+
+    let rec fold (folder: 'State -> 'T -> 'State) (init: 'State) (stack: Stack<'T>) : 'State =
+        match stack with
+        | EmptyStack -> init
+        | Cons (bottom, top) -> folder (fold folder init bottom) top
+
+    let takeWhileFold (foldPredicate: 'State -> 'T -> bool * 'State) (init: 'State) (source: 'T seq) : Stack<'T> * 'State =
+        let mutable input = source
+        let mutable state = init
+        let mutable result = Empty
+        let mutable breakNow = true
+        while not (Seq.isEmpty input) && breakNow do
+            let nextInput = Seq.head input
+            let predicateResult, nextState = foldPredicate state nextInput
+            if predicateResult then
+                state <- nextState
+                input <- Seq.tail input
+                result <- result.Push nextInput
+            else
+                breakNow <- false
+        result, state
+
+    let takeWhileFoldOld (foldPredicate: 'State -> 'T -> bool * 'State) (init: 'State) (source: 'T seq) : Stack<'T> * 'State =
+        let rec takeWhileFold' (foldPredicate: 'State -> 'T -> bool * 'State, currentState: 'State, source: 'T seq, acc: Stack<'T>) : Stack<'T> * 'State =
+            if Seq.isEmpty source then
+                acc, currentState
+            else
+                let value, nextState = foldPredicate currentState (Seq.head source)
+                if value then
+                    takeWhileFold' (foldPredicate, nextState, Seq.tail source, acc.Push (Seq.head source))
+                else
+                    acc, currentState
+        takeWhileFold' (foldPredicate, init, source, Empty)
+
+    let rec skipWhileFold (foldPredicate: 'State -> 'T -> bool * 'State) (init: 'State) (source: 'T seq) : 'T seq * 'State =
+        if Seq.isEmpty source then
+            Seq.empty, init
+        else
+            let value, nextState = foldPredicate init (Seq.head source)
+            if value then
+                skipWhileFold foldPredicate nextState (Seq.tail source)
+            else
+                source, nextState

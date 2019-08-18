@@ -22,67 +22,100 @@ type NFA<'alphabet when 'alphabet: comparison> =
         final: Tree<State>;
     }
 
-    member this.Simulate (input: 'alphabet seq) : bool =
-        // Adds all states reachable from the given
-        // set of states via epsilon transitions
-        let addEpsilonStates (states: Tree<State>) : Tree<State> =
-            Seq.fold (
-                fun allStates state ->
-                    // Adds all states reachable from the given state via epsilon transitions
-                    // Operates recursively; each newly reached state is then queried again for
-                    // epsilon transitions to additional states
-                    let rec addEpsilonAccessibleStates (state: State) (stateSet: Tree<State>) : Tree<State> =
-                        let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren state).Value.List
-                        Seq.fold (
-                            fun (stateSet: Tree<State>) (transition: Edge<State,Transition<Tree<'alphabet>>>) ->
-                                match transition.label.input with
-                                | Epsilon ->
-                                    // Check if destination state is new
-                                    match stateSet.Contains transition.dest with
-                                    | Some dest -> stateSet // Destination state is known, do nothing
-                                    | None ->
-                                        // Add new destination state and recurse through it
-                                        stateSet.Insert transition.dest
-                                        |> addEpsilonAccessibleStates transition.dest
-                                | _ -> stateSet // Do nothing
-                        ) stateSet transitions
-
-                    addEpsilonAccessibleStates state allStates
-            ) states states.List
-
-        // Run the entire input sequence through the NFA and get the resulting possible states
-        let finalStates =
-            Seq.fold (
-                // Calculates the next set of possible states
-                // from the current set and the next input character
-                fun (currentStates: Tree<State>) (nextInput: 'alphabet) ->
-                    let currentStates = addEpsilonStates currentStates // Add all states reachable via epsilons to working set
+    // Adds all states reachable from the given
+    // set of states via epsilon transitions
+    member private this.addEpsilonStates (states: Tree<State>) : Tree<State> =
+        Array.fold (
+            fun allStates state ->
+                // Adds all states reachable from the given state via epsilon transitions
+                // Operates recursively; each newly reached state is then queried again for
+                // epsilon transitions to additional states
+                let rec addEpsilonAccessibleStates (state: State) (stateSet: Tree<State>) : Tree<State> =
+                    let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren state).Value.List
                     Seq.fold (
-                        // Appends the possible next states reachable from the
-                        // given current state within the given next input character
-                        fun (nextStates: Tree<State>) (currentState: State) ->
-                            let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren currentState).Value.List
-                            Seq.fold (
-                                // Appends the destination of this possible transition
-                                // if the character set assigned to it contains the next input character
-                                fun (nextStates: Tree<State>) (possibleTransition: Edge<State, Transition<Tree<'alphabet>>>) ->
-                                    match possibleTransition.label.input with
-                                    | Alphabet alpha ->
-                                        match alpha.Contains nextInput with
-                                        | Some _ -> nextStates.Insert possibleTransition.dest // Add the state pointed to by this transition
-                                        | None -> nextStates // Add nothing
-                                    | Epsilon ->
-                                        nextStates // Ignore; assume it was followed and already added to currentStates
-                            ) nextStates transitions
-                    ) Tree.Empty currentStates.List
-            ) (Tree.Empty.Insert this.initial) input
-            |> addEpsilonStates // Add immediately accessible states one last time, in case they are accepting!
+                        fun (stateSet: Tree<State>) (transition: Edge<State,Transition<Tree<'alphabet>>>) ->
+                            match transition.label.input with
+                            | Epsilon ->
+                                // Check if destination state is new
+                                match stateSet.Contains transition.dest with
+                                | Some dest -> stateSet // Destination state is known, do nothing
+                                | None ->
+                                    // Add new destination state and recurse through it
+                                    stateSet.Insert transition.dest
+                                    |> addEpsilonAccessibleStates transition.dest
+                            | _ -> stateSet // Do nothing
+                    ) stateSet transitions
 
-        // Check if any of the terminating states are accepting
-        Seq.fold (
+                addEpsilonAccessibleStates state allStates
+        ) states states.Array
+
+    // Check if any of the terminating states are accepting
+    member private this.anyAccepting (states: Tree<State>) =
+        Array.fold (
             fun anyAccepting (nextState: State) ->
                 if anyAccepting then anyAccepting else (this.final.Contains nextState).IsSome
-        ) false finalStates.List
+        ) false states.Array
+
+    // Calculates the next set of possible states
+    // from the current set and the next input character
+    member private this.getNextStates (currentStates: Tree<State>) (nextInput: 'alphabet) =
+        Array.fold (
+            // Appends the possible next states reachable from the
+            // given current state within the given next input character
+            fun (nextStates: Tree<State>) (currentState: State) ->
+                let transitions : Edge<State, Transition<Tree<'alphabet>>> list = (this.graph.GetChildren currentState).Value.List
+                Seq.fold (
+                    // Appends the destination of this possible transition
+                    // if the character set assigned to it contains the next input character
+                    fun (nextStates: Tree<State>) (possibleTransition: Edge<State, Transition<Tree<'alphabet>>>) ->
+                        match possibleTransition.label.input with
+                        | Alphabet alpha ->
+                            match alpha.Contains nextInput with
+                            | Some _ -> nextStates.Insert possibleTransition.dest // Add the state pointed to by this transition
+                            | None -> nextStates // Add nothing
+                        | Epsilon ->
+                            nextStates // Ignore; assume it was followed and already added to currentStates
+                ) nextStates transitions
+        ) Tree.Empty currentStates.Array
+        |> this.addEpsilonStates // Add immediately accessible states, in case they are accepting!
+
+    member this.SimulateEarlyLongest (input: 'alphabet []) : 'alphabet list =
+        let firstHalf, firstMatchingStates =
+            Stack.takeWhileFold (
+                fun (nfaStates: Tree<State>) (nextAlphabet: 'alphabet) ->
+                    let nextStates = this.getNextStates nfaStates nextAlphabet
+                    not (this.anyAccepting nextStates), nextStates
+            ) (Tree.Empty.Insert this.initial |> this.addEpsilonStates) input
+        
+        if firstHalf.Length = input.Length then
+            []
+        else
+            let secondHalf, finalStates =
+                Stack.takeWhileFold (
+                    fun (nfaStates: Tree<State>) (nextAlphabet: 'alphabet) ->
+                        let nextStates = this.getNextStates nfaStates nextAlphabet
+                        this.anyAccepting nextStates, nextStates
+                ) firstMatchingStates (Seq.skip firstHalf.Length input)
+        
+            firstHalf.List @ secondHalf.List
+
+    member this.SimulateStartLongest (input: 'alphabet seq) : 'alphabet list =
+        let longestMatch, finalList, endingStates =
+            Seq.fold (
+                fun (longestList: 'alphabet Stack, currentList: 'alphabet Stack, currentStates: Tree<State>) (nextAlphabet: 'alphabet) ->
+                    let nextStates = this.getNextStates currentStates nextAlphabet
+                    let nextList = currentList.Push nextAlphabet
+                    let newLongestList = if this.anyAccepting nextStates then nextList else longestList
+                    newLongestList, nextList, nextStates
+            ) (Stack.Empty, Stack.Empty, Tree.Empty.Insert this.initial) input
+        
+        longestMatch.List
+
+    member this.Simulate (input: 'alphabet seq) : bool =
+        // Run the entire input sequence through the NFA and get the resulting possible states
+        let finalStates =
+            Seq.fold this.getNextStates (Tree.Empty.Insert this.initial |> this.addEpsilonStates) input
+        this.anyAccepting finalStates
 
     member this.StateCount =
         this.stateCount

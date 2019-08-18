@@ -54,6 +54,14 @@ Filter = [ subroutine ]
             head, ((predicate, tail) -> Filter)
         else
             (predicate, tail) -> Filter
+
+Map = [ subroutine ]
+    mapper, list = in
+    if list == unit then
+        unit
+    else
+        head, tail = list
+        (head -> mapper), (mapper, tail) -> Map
         
 IsntHello = [ subroutine ]
     true, false = (unit == unit), (unit == "false")
@@ -61,5 +69,9 @@ IsntHello = [ subroutine ]
         false
     else
         true
+
+QuoteString = [ subroutine ] "`" + in + "'"
     
-(IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> Filter -> WriteAllLines
+filtered = (IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> Filter
+mapped = (QuoteString, filtered) -> Map
+mapped -> WriteAllLines

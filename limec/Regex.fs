@@ -29,7 +29,11 @@ type Regex =
     /// </para><para>
     /// Returns the list of characters matching the regex.
     /// </para></summary>
-    member this.MatchEarlyLongest (input: char seq) : char list = //* char seq =
+
+    member this.MatchEarlyLongest (input: char []) : char list =
+        this.machine.SimulateEarlyLongest input
+
+    member this.MatchEarlyLongestOld (input: char seq) : char list = //* char seq =
         // Turns [1, 2, 3, ...] into [ [], [1], [1, 2], [1, 2, 3], ... ]
         let basedSubsequences (s: 'T seq) = Seq.init (Seq.length input) (fun i -> Seq.take (i + 1) s) // More optimized version
         // Turns [1, 2, 3, ...] into [ [1, 2, 3, ...], [2, 3, ...], [3, ...], ... ]
@@ -50,12 +54,16 @@ type Regex =
 
         matchingList//, Seq.skip (matchingList.Length) input
 
+    // UNUSED 
     /// <summary><para>
-    /// Finds the largest sequence of input characters from the beginning that matches this regex.
+    /// Finds the absolute largest sequence of input characters from the beginning that matches this regex.
     /// </para><para>
     /// Returns the list of characters matching the regex.
     /// </para></summary>
-    member this.MatchStartLongest (input: char seq) : char list =
+    (*member this.MatchStartLongest (input: char seq) : char list =
+        this.machine.SimulateStartLongest input
+
+    member this.MatchStartLongestOld (input: char seq) : char list =
         // Turns [1, 2, 3, ...] into [ [1], [1, 2], [1, 2, 3], ... ]
         let basedSubsequences (s: 'T seq) = Seq.init (Seq.length input) (fun i -> Seq.take (i + 1) s)
 
@@ -68,7 +76,7 @@ type Regex =
             else
                 longest // Stick with the old match
         ) Seq.empty
-        |> List.ofSeq
+        |> List.ofSeq*)
 
 module Regex =
 

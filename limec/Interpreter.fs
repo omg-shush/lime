@@ -82,6 +82,11 @@ module Interpreter =
                     | LlamaName "second" ->
                         ValueLibFun (TupleType 2, UnitType, (fun (i: Value) -> match i with | ValueTuple (2, [ _; v ]) -> v | _ -> invalidArg "input" "second: bad argument type")), env
                     | LlamaName "unit" -> Value.Unit, env
+                    | LlamaOperator "+" ->
+                        let (lhs, _), (rhs, _) = evaluateExpression env expr.children.[0], evaluateExpression env expr.children.[1]
+                        match lhs, rhs with
+                        | ValueString s1, ValueString s2 -> ValueString (s1 + s2), env
+                        | _ -> invalidArg "code" (sprintf "Cannot perform (+) on values %A, %A" lhs rhs)
                     | LlamaOperator "." ->
                         // TODO allow expression to produce types (w/ members) as values, so lhs and rhs will need to be evaluated into some sort of ValueType first
                         let lhs = expr.children.[0]

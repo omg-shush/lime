@@ -184,6 +184,8 @@ module SyntaxAnalyzer =
 
             Infix (LlamaOperator ".")
 
+            Infix (LlamaOperator "+")
+
             Infix (LlamaOperator "==")
 
             Infix (LlamaOperator "->")

@@ -49,7 +49,7 @@ type CodePosition =
     member this.NextChar = { this with character = this.character + 1 }
     member this.NextLine = { this with line = this.line + 1; character = CodePosition.Start.character }
 
-type PreprocessedCode = PreprocessedCode of (CodePosition * char) seq
+type PreprocessedCode = PreprocessedCode of (CodePosition * char) []
 
 type Lexeme =
     | Identifier of string
@@ -63,7 +63,7 @@ type Lexeme =
     | EndBlock
     | Unknown
 
-type LexedCode = LexedCode of (CodePosition * Lexeme) seq
+type LexedCode = LexedCode of (CodePosition * Lexeme) list
 
 type GrammarElement =
     | OperationEquals
