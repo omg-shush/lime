@@ -57,13 +57,13 @@ module Lexer =
                             if (not possiblyDelimiter.IsEmpty) then
                                 Lexeme.Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
                             else
-                                let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest
-                                if (not possiblyOperator.IsEmpty) then
-                                    Lexeme.Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
+                                let possiblyNumerical = tokenStartCharsOpti |> recognizeNumerical.MatchEarlyLongest
+                                if (not possiblyNumerical.IsEmpty) then
+                                    Lexeme.Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
                                 else
-                                    let possiblyNumerical = tokenStartCharsOpti |> recognizeNumerical.MatchEarlyLongest
-                                    if (not possiblyNumerical.IsEmpty) then
-                                        Lexeme.Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
+                                    let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest
+                                    if (not possiblyOperator.IsEmpty) then
+                                        Lexeme.Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
                                     else
                                         let possiblyChar = tokenStartCharsOpti |> recognizeChar.MatchEarlyLongest
                                         if (possiblyChar.Length > 1) then

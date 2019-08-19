@@ -88,6 +88,7 @@ module Interpreter =
                         let (lhs, _), (rhs, _) = evaluateExpression env expr.children.[0], evaluateExpression env expr.children.[1]
                         match lhs, rhs with
                         | ValueString s1, ValueString s2 -> ValueString (s1 + s2), env
+                        | ValueInt i1, ValueInt i2 -> ValueInt (i1 + i2), env
                         | _ -> invalidArg "code" (sprintf "Cannot perform (+) on values %A, %A" lhs rhs)
                     | LlamaOperator "." ->
                         // TODO allow expression to produce types (w/ members) as values, so lhs and rhs will need to be evaluated into some sort of ValueType first
@@ -107,7 +108,7 @@ module Interpreter =
                                 | ValueString string ->
                                     System.Console.WriteLine string
                                     Unit
-                                | _ -> invalidArg "input" "WriteLine: bad argument type"))
+                                | _ -> invalidArg "input" (sprintf "WriteLine: bad argument %A" i)))
                             | "ReadLine" -> ValueLibFun (UnitType, StringType, (fun (i: Value) ->
                                 match i with
                                 | Unit ->
@@ -153,6 +154,12 @@ module Interpreter =
                             Unit |> func, env // TODO assume func doesn't change env
                         | _ -> invalidArg "!" "Not given a func"
 
+                    | LlamaOperator "-" ->
+                        let value, _ = evaluateExpression env expr.children.[0]
+                        match value with
+                        | ValueInt i -> ValueInt (-i), env
+                        | _ -> invalidArg "code" (sprintf "%s(-) expected and integer, given %A" (codePosition.ToString ()) value)
+
                     | LlamaOperator "$if-then-else" ->
                         let condition, thenExpr, elseExpr = match expr.children with [ c; t; e ] -> c, t, e | _ -> invalidArg "if-then-else" "expected exactly 3 child expressions"
                         match evaluateExpression env condition with
@@ -160,6 +167,38 @@ module Interpreter =
                         | ValueBool true, _ -> evaluateExpression env thenExpr
                         | ValueBool false, _ -> evaluateExpression env elseExpr
                         | _ -> invalidArg "if-then-else" "expected condition to be a boolean"
+
+                    | LlamaOperator ">" ->
+                        let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg ">" "expected exactly 2 child expressions"
+                        // TODO ignoring any changes to the environment made by evaluating either side, is that right?
+                        let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
+                        match leftValue, rightValue with
+                        | ValueInt a, ValueInt b -> ValueBool (a > b), env
+                        | _ -> invalidArg "code" (sprintf "%s(>) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
+
+                    | LlamaOperator "<" ->
+                        let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "<" "expected exactly 2 child expressions"
+                        // TODO ignoring any changes to the environment made by evaluating either side, is that right?
+                        let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
+                        match leftValue, rightValue with
+                        | ValueInt a, ValueInt b -> ValueBool (a < b), env
+                        | _ -> invalidArg "code" (sprintf "%s(<) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
+
+                    | LlamaOperator "/" ->
+                        let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "/" "expected exactly 2 child expressions"
+                        // TODO ignoring any changes to the environment made by evaluating either side, is that right?
+                        let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
+                        match leftValue, rightValue with
+                        | ValueInt a, ValueInt b -> ValueInt (a / b), env
+                        | _ -> invalidArg "code" (sprintf "%s(/) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
+
+                    | LlamaOperator "%" ->
+                        let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "%" "expected exactly 2 child expressions"
+                        // TODO ignoring any changes to the environment made by evaluating either side, is that right?
+                        let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
+                        match leftValue, rightValue with
+                        | ValueInt a, ValueInt b -> ValueInt (a % b), env
+                        | _ -> invalidArg "code" (sprintf "%s(%%) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
 
                     | LlamaOperator "==" ->
                         let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "==" "expected exactly 2 child expressions"

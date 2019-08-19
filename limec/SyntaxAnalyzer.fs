@@ -197,7 +197,17 @@ module SyntaxAnalyzer =
 
             Infix (LlamaOperator ".")
 
+            Prefix (LlamaOperator "-")
+
             Infix (LlamaOperator "+")
+
+            Infix (LlamaOperator "/")
+
+            Infix (LlamaOperator "%")
+
+            Infix (LlamaOperator ">") // TODO implement same-precedence operators!
+
+            Infix (LlamaOperator "<")
 
             Infix (LlamaOperator "==")
 
