@@ -31,7 +31,15 @@ module Compiler =
         Logger.Log Info (sprintf "%A" parameters) parameters
 
         match parameters.target with
-        | Ast -> parameters |> Preprocessor.Preprocess |> Lexer.Lex parameters |> Parser.Parse parameters |> SyntaxAnalyzer.Analyze parameters |> AbstractSyntaxFile.Write parameters
+        | Ast ->
+            let sw = System.Diagnostics.Stopwatch.StartNew ()
+            parameters |> Preprocessor.Preprocess |> Lexer.Lex parameters |> Parser.Parse parameters |> SyntaxAnalyzer.Analyze parameters
+            |> (fun x ->
+                sw.Stop ()
+                printfn "Finished compiling in %f ms" sw.Elapsed.TotalMilliseconds
+                x
+            )
+            |> AbstractSyntaxFile.Write parameters
         | Il -> To.Do()
         | Exe -> To.Do()
         | Intr ->

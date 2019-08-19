@@ -41,43 +41,52 @@ module Lexer =
             let tokenStartCharsSingle = match tokenStartChars |> Seq.tryHead with Some x -> [| x |] | None -> [||]
 
             let token, length =
-                let possiblyBegin = tokenStartCharsSingle |> recognizeBegin.MatchEarlyLongest
-                if (not possiblyBegin.IsEmpty) then
-                    Lexeme.BeginBlock, possiblyBegin |> List.length
-                else
-                    let possiblyEnd = tokenStartCharsSingle |> recognizeEnd.MatchEarlyLongest
+                match Seq.tryHead tokenStartCharsSingle with
+                | Some '\t' ->
+                    let possiblyBegin = tokenStartCharsSingle |> recognizeBegin.MatchImmediateLongest
+                    if (not possiblyBegin.IsEmpty) then
+                        Lexeme.BeginBlock, possiblyBegin |> List.length
+                    else invalidArg "code" "lexing failed"
+                | Some '\r' ->
+                    let possiblyEnd = tokenStartCharsSingle |> recognizeEnd.MatchImmediateLongest
                     if (not possiblyEnd.IsEmpty) then
                         Lexeme.EndBlock, possiblyEnd |> List.length
-                    else
-                        let possiblyComplete = tokenStartCharsSingle |> recognizeComplete.MatchEarlyLongest
-                        if (not possiblyComplete.IsEmpty) then
-                            Lexeme.Complete, possiblyComplete |> List.length
+                    else  invalidArg "code" "lexing failed"
+                | Some '\n' ->
+                    let possiblyComplete = tokenStartCharsSingle |> recognizeComplete.MatchImmediateLongest
+                    if (not possiblyComplete.IsEmpty) then
+                        Lexeme.Complete, possiblyComplete |> List.length
+                    else invalidArg "code" "lexing failed"
+                | Some '\'' ->
+                    let possiblyChar = tokenStartCharsOpti |> recognizeChar.MatchEarlyLongest
+                    if (possiblyChar.Length > 1) then
+                        Lexeme.CharLiteral (possiblyChar.[1]), possiblyChar |> List.length // TODO support other ways of describing characters than just 1 char
+                    else invalidArg "code" "lexing failed"
+                | Some '"' ->
+                    let possiblyString = tokenStartCharsOpti |> recognizeString.MatchEarlyLongest
+                    if (not possiblyString.IsEmpty) then
+                        Lexeme.StringLiteral (possiblyString |> charListToString), possiblyString |> List.length
+                    else invalidArg "code" "lexing failed"
+                | Some x when Char.IsLetter x ->
+                    let possiblyIdentifier = tokenStartCharsOpti |> recognizeIdentifier.MatchImmediateLongest
+                    if (not possiblyIdentifier.IsEmpty) then
+                        Lexeme.Identifier (possiblyIdentifier |> charListToString), possiblyIdentifier |> List.length
+                    else invalidArg "code" "lexing failed"
+                | Some x when Char.IsDigit x ->
+                    let possiblyNumerical = tokenStartCharsOpti |> recognizeNumerical.MatchEarlyLongest
+                    if (not possiblyNumerical.IsEmpty) then
+                        Lexeme.Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
+                    else invalidArg "code" "lexing failed"
+                | _ ->
+                    let possiblyDelimiter = tokenStartCharsOpti |> recognizeDelimiter.MatchImmediateLongest // TODO could delimiters be more complicated?
+                    if (not possiblyDelimiter.IsEmpty) then
+                        Lexeme.Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
+                    else    
+                        let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest
+                        if (not possiblyOperator.IsEmpty) then
+                            Lexeme.Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
                         else
-                            let possiblyDelimiter = tokenStartCharsOpti |> recognizeDelimiter.MatchEarlyLongest
-                            if (not possiblyDelimiter.IsEmpty) then
-                                Lexeme.Delimiter (possiblyDelimiter.[0]), possiblyDelimiter |> List.length
-                            else
-                                let possiblyNumerical = tokenStartCharsOpti |> recognizeNumerical.MatchEarlyLongest
-                                if (not possiblyNumerical.IsEmpty) then
-                                    Lexeme.Numerical (possiblyNumerical |> charListToString), possiblyNumerical |> List.length
-                                else
-                                    let possiblyOperator = tokenStartCharsOpti |> recognizeOperator.MatchEarlyLongest
-                                    if (not possiblyOperator.IsEmpty) then
-                                        Lexeme.Operator (possiblyOperator |> charListToString), possiblyOperator |> List.length
-                                    else
-                                        let possiblyChar = tokenStartCharsOpti |> recognizeChar.MatchEarlyLongest
-                                        if (possiblyChar.Length > 1) then
-                                            Lexeme.CharLiteral (possiblyChar.[1]), possiblyChar |> List.length // TODO support other ways of describing characters than just 1 char
-                                        else
-                                            let possiblyString = tokenStartCharsOpti |> recognizeString.MatchEarlyLongest
-                                            if (not possiblyString.IsEmpty) then
-                                                Lexeme.StringLiteral (possiblyString |> charListToString), possiblyString |> List.length
-                                            else
-                                                let possiblyIdentifier = tokenStartCharsOpti |> recognizeIdentifier.MatchEarlyLongest
-                                                if (not possiblyIdentifier.IsEmpty) then
-                                                    Lexeme.Identifier (possiblyIdentifier |> charListToString), possiblyIdentifier |> List.length
-                                                else
-                                                    Lexeme.Unknown, 1
+                            Lexeme.Unknown, 1
 
             // Return token (with code position of tokenStart added back in!), unlexed code and (false if we've reached an unknown token a.k.a. end of valid input, true otherwise)
             match token with

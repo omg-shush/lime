@@ -23,6 +23,9 @@ type Regex =
         let inputStream = input.ToCharArray () |> Seq.ofArray
         this.machine.Simulate inputStream
 
+    member this.MatchImmediateLongest (input: char []) : char list =
+        this.machine.SimulateImmediateLongest input
+
     /// <summary><para>
     /// Finds the smallest number of characters that matches, then extends it until the string
     /// stops matching, and then stops.

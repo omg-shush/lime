@@ -79,6 +79,15 @@ type NFA<'alphabet when 'alphabet: comparison> =
         ) Tree.Empty currentStates.Array
         |> this.addEpsilonStates // Add immediately accessible states, in case they are accepting!
 
+    member this.SimulateImmediateLongest (input: 'alphabet []) : 'alphabet list =
+        let result, finalStates =
+            Stack.takeWhileFold (
+                fun (nfaStates: Tree<State>) (nextAlphabet: 'alphabet) ->
+                    let nextStates = this.getNextStates nfaStates nextAlphabet
+                    this.anyAccepting nextStates, nextStates
+            ) (Tree.Empty.Insert this.initial) input
+        result.List
+
     member this.SimulateEarlyLongest (input: 'alphabet []) : 'alphabet list =
         let firstHalf, firstMatchingStates =
             Stack.takeWhileFold (
