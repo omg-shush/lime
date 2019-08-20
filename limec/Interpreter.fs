@@ -35,7 +35,7 @@ module Interpreter =
 
     and Environment = Association<LlamaIdentifier, IdentifierValue>
 
-    let Interpret (controls: Parameters) (llama: Llama) =
+    let Interpret (controls: Parameters) (llamas: Llama list) =
         let rec interpret { Llama.typ = typ; def = AbstractSyntaxTree (codePosition, localBindings, LlamaExpression expression)} (dynamicEnvironment: Environment) : Value * Environment =
             // Wrap the LlamaIdentifier -> Llama into a LlamaIdentifier -> (Uninitialized Llama), to prepare for substituting each with initialized values when evaluated
             let uninitBindings (b: Association<LlamaIdentifier, Llama>) = b.List |> List.map (fun kvpair -> kvpair.key, Uninitialized kvpair.value) |> Association.Empty.PutAll
@@ -229,5 +229,7 @@ module Interpreter =
             evaluateExpression env expression
 
         Logger.Log Info "\n----------------------" controls
-        interpret llama (Association.Empty.PutAll [])
+        List.fold (fun (env: Environment) llama ->
+            //printfn "Env: %A" (env.ToString ())
+            interpret llama env |> snd) Association.Empty llamas // TODO should we preserve values from interpreting?
 

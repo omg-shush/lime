@@ -20,18 +20,18 @@ Echo = [ subroutine ]
         "No don't leave!! ;(" -> dotnet.WriteLine
         Echo!
     else
-        "unrecognized command" -> dotnet.WriteLine
+        msg -> dotnet.WriteLine
         Echo!
         
-//Echo!
+Echo!*/
 
-WriteLine2019 = [ subroutine ]
+/*WriteLine2019 = [ subroutine ]
     "Programmer:" -> dotnet.WriteLine
     "Computer: " -> dotnet.Write
-    in -> dotnet.WriteLine*/
+    in -> dotnet.WriteLine
     
 //"noot noot" -> WriteLine2019
-
+*/
 WriteAllLines = [ subroutine ]
     if in == unit then
         unit
@@ -64,18 +64,25 @@ List = [ module ]
             head, tail = list
             (head -> mapper), (mapper, tail) -> Map
         
-IsntHello = [ subroutine ]
+/*IsntHello = [ subroutine ]
     true, false = (unit == unit), (unit == "false")
     if in == "hello" then
         false
     else
         true
 
-QuoteString = [ subroutine ] "`" + in + "'"
+QuoteString = [ subroutine ] "`" + in + "'"*/
     
-filtered = (IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> List.Filter
-mapped = (QuoteString, filtered) -> List.Map
-mapped -> WriteAllLines
+//filtered = (IsntHello, ("hello"; "goodbye"; "hello"; "sup"; "hello")) -> List.Filter
+//mapped = (QuoteString, filtered) -> List.Map
+//mapped -> WriteAllLines
+
+ChellSays = [ subroutine ]
+    "Chell says: " + in
+
+//"hello" -> ChellSays -> dotnet.WriteLine
+
+(ChellSays, ("hello"; "goodbye"; "cookies"; "oreos"; "i want food")) -> List.Map -> WriteAllLines
 
 /*
 Bool = [ module ]
@@ -164,3 +171,6 @@ mapped -> WriteAllLines
 (Integer.ToString, 10 -> List.Naturals) -> List.Map -> WriteAllLines
 
 */
+
+Variable = [ subroutine ]
+    42

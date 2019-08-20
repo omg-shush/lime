@@ -38,6 +38,7 @@ type Parameters =
         target: Target;
         mode: Mode;
         verbosity: Verbosity;
+        libraries: string list;
     }
 
 type CodePosition =

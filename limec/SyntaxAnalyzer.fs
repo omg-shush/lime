@@ -174,9 +174,20 @@ module SyntaxAnalyzer =
 
         let rec removeRedundantTrees { LlamaType.typ = parentTyp; def = AbstractTypeTree (cp, bindings, code): AbstractTypeTree } : LlamaType =
             match bindings.Array, code.Array with
-            | [| { key = key; value = { LlamaType.typ = subTyp; def = subdefinition } } |],
+            (*| [| { key = key; value = { LlamaType.typ = subTyp; def = subdefinition } } |],
                 [| [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 name ] |] when key = name ->
-                    removeRedundantTrees { typ = parentTyp @ subTyp; def = subdefinition }
+                    removeRedundantTrees { typ = parentTyp @ subTyp; def = subdefinition } // TODO this optimization may kill modules!*)
+            (*| [| { key = key; value = { LlamaType.typ = subTyp; def = subdefinition } } |],
+                [| [ Choice2Of2 (LlamaOperator "$init"); Choice2Of2 name ] |] when key = name && subTyp = [] ->
+                    removeRedundantTrees {
+                        typ = parentTyp @ subTyp;
+                        def =
+                            AbstractTypeTree (
+                                cp,
+                                Association.Empty.Put key { LlamaType.typ = parentTyp; def = subdefinition }, // This should keep modules safe... NOPE lol
+                                code
+                            );
+                    }*)
             | _ ->
                 { LlamaType.typ = parentTyp; def =
                     AbstractTypeTree (

@@ -43,12 +43,13 @@ module Compiler =
         | Il -> To.Do()
         | Exe -> To.Do()
         | Intr ->
-            let llama =
+            let openLlama fileName =
                 let header = Array.zeroCreate AbstractSyntaxFile.AST_HEADER.Length
-                let headerSize = (IO.File.OpenRead parameters.input).Read (header.AsSpan ())
+                let headerSize = (IO.File.OpenRead fileName).Read (header.AsSpan ())
                 if headerSize = header.Length && header = AbstractSyntaxFile.AST_HEADER then
-                    AbstractSyntaxFile.Read parameters
+                    AbstractSyntaxFile.Read fileName
                 else
+                    let sw = System.Diagnostics.Stopwatch.StartNew ()
                     // Read and preprocess the raw text file into a positioned sequence of characters,
                     // eliminating redundant characters and processing indentation as well
                     let preprocessed = Preprocessor.Preprocess parameters
@@ -67,9 +68,15 @@ module Compiler =
                     let llama = SyntaxAnalyzer.Analyze parameters parsed
                     Logger.Log Info (llama.ToString ()) parameters
 
+                    sw.Stop ()
+                    printfn "Finished compiling in %f ms" sw.Elapsed.TotalMilliseconds
+
                     llama
 
-            Interpreter.Interpret parameters llama |> ignore //|> printfn "Process returned with value `%A'"
+            let llamas = List.map openLlama (List.rev (parameters.input :: parameters.libraries))
+            // TODO cyclic dependencies??
+            // Reverse so that order of interpretation is: [ first lib, second lib, ..., user code ]
+            Interpreter.Interpret parameters llamas |> ignore //|> printfn "Process returned with value `%A'"
             ()
         
         0

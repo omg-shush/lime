@@ -112,8 +112,11 @@ module Preprocessor =
                                     // Can pop off another level and then recurse
                                     match code with
                                     // If block ends in a newline, duplicate it to after the block closes TODO newln has wrote CodePosition?
-                                    | Cons (_, (_, '\n' as newln)) -> unindent (Cons (Cons (code, (pos, '\r')), newln)) reducedIndents.Tail
-                                    | _ -> unindent (Cons (code, (pos, '\r'))) reducedIndents.Tail // Otherwise, just unindent
+                                    | Cons (_, (_, '\n' as newln)) ->
+                                        unindent (Cons (Cons (code, (pos, '\r')), newln)) reducedIndents.Tail
+                                    // Otherwise, insert newlines
+                                    | _ ->
+                                        unindent (((code.Push (pos, '\n')).Push (pos, '\r')).Push (pos, '\n')) reducedIndents.Tail
                                 else
                                     // Invalid indentation
                                     Logger.Log Error (sprintf "%sInvalid indentation of %d in context of %A" (pos.ToString ()) currentIndent reducedIndents) controls
@@ -123,7 +126,11 @@ module Preprocessor =
                 ) (Stack.Empty, List.Empty, Some 0) input
 
             // Close any trailing scopes
-            let output = List.fold (fun closedOutput _ -> Cons (closedOutput, (output.Top |> fst, '\r'))) output remainingIndents
+            let output =
+                List.fold (fun (closedOutput: Stack<CodePosition * char>) _ ->
+                    let cp: CodePosition = output.Top |> fst
+                    ((closedOutput.Push (cp, '\n')).Push (cp, '\r')).Push (cp, '\n')
+                ) output remainingIndents
 
             output
 

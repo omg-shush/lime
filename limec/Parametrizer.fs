@@ -10,6 +10,7 @@ module Parametrizer =
                 target = Exe;
                 mode = Release;
                 verbosity = Terse;
+                libraries = [];
             }
         Array.fold (fun controls (argument: string) ->
             if (argument.Contains " -> ") then
@@ -57,6 +58,9 @@ module Parametrizer =
                 else
                     Logger.Log Warning ("Argument `" + argument + "' unknown, skipping") defaultControls
                     controls
+            elif argument.StartsWith "-L" then
+                // Library
+                { controls with libraries = (argument.Substring 2) :: controls.libraries }
             else
                 // Unknown argument
                 Logger.Log Warning ("Argument `" + argument + "' unknown, skipping") defaultControls

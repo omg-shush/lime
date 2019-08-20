@@ -6,7 +6,7 @@ module AbstractSyntaxFile =
 
     let AST_HEADER = 0xb0000000 |> BitConverter.GetBytes
 
-    let Read (parameters: Parameters) : Llama =
+    let Read (fileName: string) : Llama =
         let rec readLlama (bs: byte list) =
             let readInt (bs: byte list) =
                 let bytes = bs |> List.take 4 |> Array.ofList
@@ -57,7 +57,7 @@ module AbstractSyntaxFile =
                 | 5uy ->
                     let b, bs = readBool bs
                     LlamaBool b, bs
-                | _ -> invalidArg parameters.input "Invalid file"
+                | _ -> invalidArg fileName "Invalid file"
 
             let readLlamaIdentifier (bs: byte list) =
                 let identifierType, bs = List.head bs, List.tail bs
@@ -65,7 +65,7 @@ module AbstractSyntaxFile =
                     match identifierType with
                     | Byte.MaxValue -> LlamaName
                     | Byte.MinValue -> LlamaOperator
-                    | _ -> invalidArg parameters.input "Invalid file"
+                    | _ -> invalidArg fileName "Invalid file"
                 let s, bs = readString bs
                 identifierCtor s, bs
 
@@ -89,7 +89,7 @@ module AbstractSyntaxFile =
                     | Byte.MinValue ->
                         let operator, bs = operatorReader bs
                         Operation operator, bs
-                    | _ -> invalidArg parameters.input "Invalid file"
+                    | _ -> invalidArg fileName "Invalid file"
                 let size, bs = readInt bs
                 let children, bs = readList (readOperatorParseTree atomReader operatorReader) bs
                 { OperatorParseTree.data = data; children = children; size = size }, bs
@@ -109,18 +109,18 @@ module AbstractSyntaxFile =
             { Llama.typ = typ; def = def }, bs
 
         let sw = System.Diagnostics.Stopwatch.StartNew ()
-        let file = parameters.input |> IO.File.ReadAllBytes |> List.ofArray
+        let file = fileName |> IO.File.ReadAllBytes |> List.ofArray
         let header, bytes = List.take AST_HEADER.Length file, List.skip AST_HEADER.Length file
         if Array.ofSeq header = AST_HEADER then
             let llama, remaining = readLlama bytes
             if Seq.isEmpty remaining then
                 sw.Stop ()
-                printfn "Read %d bytes from %s in %f ms" (Seq.length bytes + AST_HEADER.Length) parameters.input sw.Elapsed.TotalMilliseconds
+                printfn "Read %d bytes from %s in %f ms" (Seq.length bytes + AST_HEADER.Length) fileName sw.Elapsed.TotalMilliseconds
                 llama
             else
-                invalidArg parameters.input "Invalid file"
+                invalidArg fileName "Invalid file"
         else
-            invalidArg parameters.input "Invalid file"
+            invalidArg fileName "Invalid file"
 
     let Write (parameters: Parameters) (program: Llama) =
         let rec writeLlama ({ typ = t; def = d }: Llama) =
