@@ -12,16 +12,16 @@ clean:
     del Test.ast
 
 Bool.ast: Bool.lime
-    $(LC) $(LFLAGS) "Bool.lime -> $@"
+    $(LC) $(LFLAGS) "%s -> $@"
 
 Integer.ast: Integer.lime
-    $(LC) $(LFLAGS) "Integer.lime -> $@"
+    $(LC) $(LFLAGS) "%s -> $@"
 
 List.ast: List.lime
-    $(LC) $(LFLAGS) "List.lime -> $@"
+    $(LC) $(LFLAGS) "%s -> $@"
 
 Map.ast: Map.lime List.ast
-    $(LC) $(LFLAGS) "Map.lime -> $@"
+    $(LC) $(LFLAGS) "%s -> $@"
 
 Test.ast: Test.lime Bool.ast Integer.ast List.ast Map.ast
-    $(LC) $(LFLAGS) "Test.lime -> $@"
+    $(LC) $(LFLAGS) "%s -> $@"
