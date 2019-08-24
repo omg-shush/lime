@@ -2,14 +2,12 @@
 LC=dotnet run -p ../limec/limec.fsproj --
 LFLAGS=--target=ast
 
-all: Bool.ast Integer.ast List.ast Map.ast Test.ast
+OBJS=Bool.ast Integer.ast List.ast Map.ast Test.ast
+
+all: $(OBJS)
 
 clean:
-    del Bool.ast
-    del Integer.ast
-    del List.ast
-    del Map.ast
-    del Test.ast
+    del $(OBJS)
 
 Bool.ast: Bool.lime
     $(LC) $(LFLAGS) "%s -> $@"
