@@ -18,8 +18,8 @@ Integer.ast: Integer.lime
 List.ast: List.lime
     $(LC) $(LFLAGS) "%s -> $@"
 
-Map.ast: Map.lime List.ast
+Map.ast: Map.lime
     $(LC) $(LFLAGS) "%s -> $@"
 
-Test.ast: Test.lime Bool.ast Integer.ast List.ast Map.ast
+Test.ast: Test.lime
     $(LC) $(LFLAGS) "%s -> $@"
