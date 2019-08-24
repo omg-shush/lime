@@ -63,41 +63,49 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
-    <NMakeOutput>TestLime.exe</NMakeOutput>
-    <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>nmake all</NMakeBuildCommandLine>
+    <NMakeOutput>Test.ast</NMakeOutput>
+    <NMakeCleanCommandLine>nmake clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>nmake clean &amp;&amp; nmake all</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>
     </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeBuildCommandLine>
-    <NMakeOutput>TestLime.exe</NMakeOutput>
-    <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --debug</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>nmake all</NMakeBuildCommandLine>
+    <NMakeOutput>Test.ast</NMakeOutput>
+    <NMakeCleanCommandLine>nmake clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>nmake clean &amp;&amp; nmake all</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>
     </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeBuildCommandLine>
-    <NMakeOutput>TestLime.exe</NMakeOutput>
-    <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>nmake all</NMakeBuildCommandLine>
+    <NMakeOutput>Test.ast</NMakeOutput>
+    <NMakeCleanCommandLine>nmake clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>nmake clean; nmake all</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>
     </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <NMakeBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeBuildCommandLine>
-    <NMakeOutput>TestLime.exe</NMakeOutput>
-    <NMakeCleanCommandLine>del TestLime.il TestLime.exe</NMakeCleanCommandLine>
-    <NMakeReBuildCommandLine>limec TestLime.lime-&gt;TestLime.exe --target=exe --release</NMakeReBuildCommandLine>
+    <NMakeBuildCommandLine>nmake all</NMakeBuildCommandLine>
+    <NMakeOutput>Test.ast</NMakeOutput>
+    <NMakeCleanCommandLine>nmake clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>nmake clean; nmake all</NMakeReBuildCommandLine>
     <NMakePreprocessorDefinitions>
     </NMakePreprocessorDefinitions>
   </PropertyGroup>
   <ItemDefinitionGroup>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <None Include="Bool.lime" />
+    <None Include="Integer.lime" />
+    <None Include="List.lime" />
+    <None Include="Map.lime" />
+    <None Include="Test.lime" />
     <None Include="TestLime.lime" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="makefile" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

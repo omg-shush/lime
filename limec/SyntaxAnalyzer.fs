@@ -75,14 +75,14 @@ module SyntaxAnalyzer =
             | Nonterminal (Statement, [ lhs; bindingType; rhs ]) ->
                 let lhsOps = [
                     Circumfix (LlamaOperator "(", LlamaOperator ")")
-                    Customfix (RightAssociative, LlamaOperator "$tuple", [ Argument; Form (LlamaOperator ","); Argument ])
+                    Customfix (NonAssociative, LlamaOperator "$tuple", [ Argument; Form (LlamaOperator ","); Argument ])
                 ]
                 let pattern =
                     lhs
                     |> serializeExpression
                     |> prepareExpression
                     |> List.unzip |> snd
-                    |> OperatorParseTree.Parse lhsOps
+                    |> OperatorParseTree.Parse lhsOps // TODO make Parse allow extra data, so that CodePositions can be kept
 
                 let rec bindPattern (pat: OperatorParseTree<LlamaLiteral, LlamaIdentifier>)
                                     { LlamaType.typ = typ; def = (value: AbstractTypeTree) }
@@ -123,15 +123,15 @@ module SyntaxAnalyzer =
                     | _ -> invalidArg "code" "Invalid pattern match"
                 //let cp, varName = match lhs with Terminal (Expression, (cp, Identifier name)) -> cp, LlamaName name | _ -> To.Do() // TODO pattern matching / custom operators
                 //let att = analyzeTypes rhs
-                let additionalTypes =
+                let additionalTypes, cp =
                     match bindingType with
-                    | Terminal (OperationColon, _) -> [ LlamaName "mutable" ]
-                    | Terminal (OperationEquals, _) -> [ LlamaName "immutable" ]
+                    | Terminal (OperationColon, (cp, _)) -> [ LlamaName "mutable" ], cp
+                    | Terminal (OperationEquals, (cp, _)) -> [ LlamaName "immutable" ], cp
                     | _ -> To.Do() // TODO different binding types?
                 let analyzedRhs = analyzeTypes rhs
                 let bindings, code =
-                    bindPattern pattern (analyzeTypes rhs) additionalTypes (CodePosition.Start (*TODO*)) Association.Empty List.Empty
-                { LlamaType.typ = []; def = AbstractTypeTree (CodePosition.Start (*TODO*), bindings, Stack.Empty.Push code) }
+                    bindPattern pattern (analyzeTypes rhs) additionalTypes (cp (*TODO*)) Association.Empty List.Empty
+                { LlamaType.typ = []; def = AbstractTypeTree (cp (*TODO*), bindings, Stack.Empty.Push code) }
 
             | _ -> invalidArg "code" (sprintf "Improper parse tree: %A" code)
 

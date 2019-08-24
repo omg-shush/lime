@@ -153,7 +153,7 @@ module Preprocessor =
                 | '\n' -> cp.NextLine
                 | _ -> cp.NextChar
             (cp, c), nextCp
-        ) { CodePosition.Start with file = controls.input }
+        ) { file = controls.input; line = 1; character = 1 }
         |> fst
         |> preprocessCommentsIntoWhitespace
         |> preprocessIndentationIntoControlChars

@@ -1,0 +1,51 @@
+Map = [ module ]
+    // Represents a map as a tree of 4-tuples: (key, value, leftChild, rightChild)
+
+    Empty = unit
+    
+    Put = [ subroutine ] // TODO make self-balancing
+        map, key, value = in
+        if map == Empty then
+            (key, value, Empty, Empty)
+        else
+            thisKey, thisValue, left, right = map
+            if key < thisKey then
+                thisKey, thisValue, (left, key, value) -> Put, right
+            else if key > thisKey then
+                thisKey, thisValue, left, (right, key, value) -> Put
+            else // key == thisKey
+                key, value, left, right // Overwrite new value
+                
+    ContainsKey = [ subroutine ]
+        map, key = in
+        if map == Empty then
+            Bool.false
+        else
+            thisKey, thisValue, left, right = map
+            if key == thisKey then
+                Bool.true
+            else if key < thisKey then
+                (left, key) -> ContainsKey
+            else // if key > thisKey
+                (right, key) -> ContainsKey
+                
+    Get = [ subroutine ]
+        map, key = in
+        if map == Empty then
+            unit
+        else
+            thisKey, thisValue, left, right = map
+            if key == thisKey then
+                thisValue
+            else if key < thisKey then
+                (left, key) -> Get
+            else // if key > thisKey
+                (right, key) -> Get
+                
+    InOrderList = [ subroutine ]
+        if in == unit then
+            unit
+        else
+            key, value, left, right = in
+            ((left -> InOrderList), ((key, value), right -> InOrderList)) -> List.Append
+    

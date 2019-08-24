@@ -1,0 +1,23 @@
+WriteAllLines = [ subroutine ]
+    if in == unit then
+        unit
+    else
+        head, tail = in
+        head -> dotnet.WriteLine
+        tail -> WriteAllLines
+        
+QuoteWord = [ subroutine ] "``" + in + "''"
+
+KeyValueToString = [ subroutine ]
+    key, value = in
+    key + ": " + value
+        
+(QuoteWord, ("here"; "I"; "come"; "I"; "am"; "CINNAMON")) -> List.Map -> List.Rev -> WriteAllLines
+
+map1 = (Map.Empty, "red", "1") -> Map.Put
+map2 = (map1, "green", "2") -> Map.Put
+map = (map2, "blue", "3") -> Map.Put
+(KeyValueToString, map -> Map.InOrderList) -> List.Map -> WriteAllLines
+
+((map, "blue") -> Map.ContainsKey -> Bool.ToString; (map, "blue") -> Map.Get) -> WriteAllLines
+        

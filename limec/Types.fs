@@ -45,10 +45,9 @@ type CodePosition =
     { file: string; line: int; character: int }
     override this.ToString () =
         sprintf "@ file %s, line %3d, char %3d: " this.file this.line this.character
-    static member Start = { file = "unknown file"; line = 1; character = 1 }
     member this.PrevChar = { this with character = this.character - 1 }
     member this.NextChar = { this with character = this.character + 1 }
-    member this.NextLine = { this with line = this.line + 1; character = CodePosition.Start.character }
+    member this.NextLine = { this with line = this.line + 1; character = 1 }
 
 type PreprocessedCode = PreprocessedCode of (CodePosition * char) []
 

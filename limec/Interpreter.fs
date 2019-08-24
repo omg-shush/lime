@@ -77,7 +77,7 @@ module Interpreter =
                         ValueLibFun (TupleType -1, UnitType, (fun (v: Value) ->
                             match v with
                             | ValueTuple (2, [ ValueInt i; ValueTuple (n, t) ]) when (int i) <= n -> List.item ((int i) - 1) t
-                            | _ -> invalidArg "input" "nth expected a tuple (index, tuple)"
+                            | _ -> invalidArg "input" (sprintf "%snth expected a tuple (index, tuple)" (codePosition.ToString ()))
                         )), env
                     | LlamaName "first" ->
                         ValueLibFun (TupleType 2, UnitType, (fun (i: Value) -> match i with | ValueTuple (2, [ v; _ ]) -> v | _ -> invalidArg "input" "first: bad argument type")), env
@@ -122,10 +122,10 @@ module Interpreter =
                                 match moduleEnv.Get moduleMember with
                                 | Some (Initialized value) -> value, env
                                 | _ -> invalidArg "code" (sprintf "%A is not a member of the module %A or has not been initialized yet" moduleMember moduleName)
-                            | _ -> invalidArg "code" (sprintf "Module %A does not exist or has not been initialized yet" moduleName)
+                            | _ -> invalidArg "code" (sprintf "%sModule %A does not exist or has not been initialized yet" (codePosition.ToString ()) moduleName)
                         | _ -> invalidArg "program" "Unknown lhs to dot" // TODO call functions within types
                     | LlamaOperator "$tuple" ->
-                        ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env // TODO assuming env stays the same
+                        ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env
 
                     | LlamaOperator "$list" ->
                         (List.foldBack (fun elem lis ->
@@ -139,7 +139,7 @@ module Interpreter =
                             if List.contains (LlamaName "subroutine") llama.typ then // TODO replace hardcoded types/operators with global constants
                                 ValueClosure (UnitType, UnitType, llama, id, env) // TODO actually typecheck (?) and use correct I/O types
                             elif List.contains (LlamaName "module") llama.typ then
-                                let _, resultEnv = interpret llama Association.Empty // TODO allow chained (?) module inheritance (?) what am i saying (?)
+                                let _, resultEnv = interpret llama env
                                 ValueModule resultEnv
                             else
                                 interpret llama env |> fst // TODO find "public" bindings in sub-env and append to current env (?)
@@ -174,7 +174,8 @@ module Interpreter =
                         let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
                         match leftValue, rightValue with
                         | ValueInt a, ValueInt b -> ValueBool (a > b), env
-                        | _ -> invalidArg "code" (sprintf "%s(>) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
+                        | ValueString a, ValueString b -> ValueBool (a > b), env
+                        | _ -> invalidArg "code" (sprintf "%s(>) expected two comparables of the same type, given %A and %A" (codePosition.ToString ()) left right)
 
                     | LlamaOperator "<" ->
                         let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "<" "expected exactly 2 child expressions"
@@ -182,7 +183,8 @@ module Interpreter =
                         let (leftValue, _), (rightValue, _) = evaluateExpression env left, evaluateExpression env right
                         match leftValue, rightValue with
                         | ValueInt a, ValueInt b -> ValueBool (a < b), env
-                        | _ -> invalidArg "code" (sprintf "%s(<) expected two integers, given %A and %A" (codePosition.ToString ()) left right)
+                        | ValueString a, ValueString b -> ValueBool (a < b), env
+                        | _ -> invalidArg "code" (sprintf "%s(<) expected two comparables of the same type, given %A and %A" (codePosition.ToString ()) left right)
 
                     | LlamaOperator "/" ->
                         let left, right = match expr.children with [ l; r ] -> l, r | _ -> invalidArg "/" "expected exactly 2 child expressions"
@@ -220,7 +222,7 @@ module Interpreter =
                         match env.Get id with
                         | Some (Initialized llama) -> llama, env
                         | Some (Uninitialized _) -> invalidArg "program" (sprintf "%susing uninitialized binding: %A" (codePosition.ToString ()) id) // TODO only crash if couldn't initialize beforehand
-                        | _ -> invalidArg "program" (sprintf "%sunknown identifier: %A" (codePosition.ToString ()) id )
+                        | _ -> invalidArg "program" (sprintf "%sunknown identifier: %A\n%s\n%s" (codePosition.ToString ()) id (localBindings.ToString ()) (expression.ToString ()))
 
             // First, insert all local bindings into the current dynamic environment
             let env = dynamicEnvironment.Append (uninitBindings localBindings)
@@ -231,5 +233,5 @@ module Interpreter =
         Logger.Log Info "\n----------------------" controls
         List.fold (fun (env: Environment) llama ->
             //printfn "Env: %A" (env.ToString ())
+            //printfn "%A" env.KeySet
             interpret llama env |> snd) Association.Empty llamas // TODO should we preserve values from interpreting?
-

@@ -1,0 +1,15 @@
+Bool = [ module ]
+    true, false = (unit == unit), (unit == "false")
+    
+    ToString = [ subroutine ] if in then "true" else "false"
+    
+    Not = [ subroutine ] if in then false else true
+    
+    And = [ subroutine ]
+        left, right = in
+        if left then right else false
+        
+    Or = [ subroutine ]
+        left, right = in
+        if left then true else right
+    

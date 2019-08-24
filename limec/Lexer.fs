@@ -90,7 +90,7 @@ module Lexer =
 
             // Return token (with code position of tokenStart added back in!), unlexed code and (false if we've reached an unknown token a.k.a. end of valid input, true otherwise)
             match token with
-            | Lexeme.Unknown -> (CodePosition.Start, token), Seq.skip length tokenStartCode, false
+            | Lexeme.Unknown -> (Unchecked.defaultof<CodePosition>, token), Seq.skip length tokenStartCode, false
             | _ -> (fst (Seq.head tokenStartCode), token), Seq.skip length tokenStartCode, true
 
         let rec initInfiniteFold (folder: 'State -> 'Result * 'State * bool) (init: 'State) : 'Result list =

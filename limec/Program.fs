@@ -74,6 +74,7 @@ module Compiler =
                     llama
 
             let llamas = List.map openLlama (List.rev (parameters.input :: parameters.libraries))
+            printfn "Interpreting: %A" (List.rev (parameters.input :: parameters.libraries))
             // TODO cyclic dependencies??
             // Reverse so that order of interpretation is: [ first lib, second lib, ..., user code ]
             Interpreter.Interpret parameters llamas |> ignore //|> printfn "Process returned with value `%A'"

@@ -18,5 +18,23 @@
     <None Include="TestLime.lime">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="Test.lime">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="Bool.lime">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="Integer.lime">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="List.lime">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="Map.lime">
+      <Filter>Source Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="makefile" />
   </ItemGroup>
 </Project>
