@@ -20,4 +20,6 @@ map = (map2, "blue", "3") -> Map.Put
 (KeyValueToString, map -> Map.InOrderList) -> List.Map -> WriteAllLines
 
 ((map, "blue") -> Map.ContainsKey -> Bool.ToString; (map, "blue") -> Map.Get) -> WriteAllLines
+
+System.Console.ReadLine! -> System.Console.WriteLine
         

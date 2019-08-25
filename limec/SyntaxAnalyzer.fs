@@ -222,9 +222,9 @@ module SyntaxAnalyzer =
 
             Infix (LlamaOperator "==")
 
-            Infix (LlamaOperator "->")
-
             Postfix (LlamaOperator "!")
+
+            Infix (LlamaOperator "->")
 
             Customfix (NonAssociative, LlamaOperator "$tuple", [ Argument; Form (LlamaOperator ","); Argument ])
 

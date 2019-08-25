@@ -3,7 +3,7 @@
 module Interpreter =
 
     type ValueType =
-        | UnitType | StringType | CharType | IntType | DoubleType | BoolType | ClosureType of ValueType * ValueType | TupleType of int | ModuleType
+        | UnitType | StringType | CharType | IntType | DoubleType | BoolType | ClosureType of ValueType * ValueType | TupleType of int | ModuleType | DotnetType
 
     type Value =
         | Unit
@@ -16,6 +16,7 @@ module Interpreter =
         | ValueLibFun of ValueType * ValueType * (Value -> Value)
         | ValueTuple of int * Value list // TODO add subtypes to tuple's type, not just number of elements
         | ValueModule of Environment
+        | ValueDotnet of System.Reflection.MemberInfo []
 
         member this.Type =
             match this with
@@ -28,6 +29,7 @@ module Interpreter =
             | ValueClosure (i, o, _, _, _) | ValueLibFun (i, o, _) -> ClosureType (i, o)
             | ValueTuple (n, _) -> TupleType n
             | ValueModule _ -> ModuleType
+            | ValueDotnet _ -> DotnetType
 
     and IdentifierValue =
         | Initialized of Value
@@ -39,6 +41,68 @@ module Interpreter =
         let rec interpret { Llama.typ = typ; def = AbstractSyntaxTree (codePosition, localBindings, LlamaExpression expression)} (dynamicEnvironment: Environment) : Value * Environment =
             // Wrap the LlamaIdentifier -> Llama into a LlamaIdentifier -> (Uninitialized Llama), to prepare for substituting each with initialized values when evaluated
             let uninitBindings (b: Association<LlamaIdentifier, Llama>) = b.List |> List.map (fun kvpair -> kvpair.key, Uninitialized kvpair.value) |> Association.Empty.PutAll
+
+            let runDotnetMethod (env: Environment) members input =
+                let limeToDotnet (v: Value) : obj =
+                    match v with
+                    | Unit -> null
+                    | ValueString s -> s :> obj
+                    | ValueChar c -> c :> obj
+                    | ValueInt i -> i :> obj
+                    | ValueDouble d -> d :> obj
+                    | ValueBool b -> b :> obj
+                    | ValueClosure _ -> To.Do () // TODO transform into lambdas... somehow???
+                    | ValueLibFun _ -> To.Do () // heck
+                    | ValueTuple (size, xs) ->
+                        let listToTuple (l: Value list) =
+                            let l' = List.toArray l |> Array.map (fun v -> v :> obj)
+                            let types = l' |> Array.map (fun o -> o.GetType())
+                            let tupleType = Microsoft.FSharp.Reflection.FSharpType.MakeTupleType types
+                            Microsoft.FSharp.Reflection.FSharpValue.MakeTuple (l' , tupleType)
+                        listToTuple xs
+                    | ValueModule _ -> To.Do ()
+                    | ValueDotnet _ -> To.Do ()
+                let rec dotnetToLime (v: obj) =
+                    match v with
+                    | null -> Unit
+                    | :? string as s -> ValueString s
+                    | :? char as c -> ValueChar c
+                    | :? int64 as i -> ValueInt i
+                    | :? double as d -> ValueDouble d
+                    | :? bool as b -> ValueBool b
+                    | _ when Microsoft.FSharp.Reflection.FSharpType.IsTuple(v.GetType()) ->
+                        // Assume is tuple
+                        let xs = Microsoft.FSharp.Reflection.FSharpValue.GetTupleFields v |> Array.toList |> List.map dotnetToLime
+                        ValueTuple (List.length xs, xs)
+                    | _ -> To.Do () // possibly error
+                let input = limeToDotnet input
+                let input' =
+                    if input = null then
+                        [||]
+                    elif FSharp.Reflection.FSharpType.IsTuple(input.GetType ()) then
+                        FSharp.Reflection.FSharpValue.GetTupleFields ()
+                    else
+                        [| input |]
+                let inputType = Array.map (fun p -> p.GetType ()) input'
+                let validMethods =
+                    Array.choose (fun (mbr: System.Reflection.MemberInfo) ->
+                        match mbr with
+                        | (:? System.Reflection.MethodInfo as method) ->
+                            let parameters = method.GetParameters () |> Array.map (fun p -> p.ParameterType)
+                            //printfn "Comparing %A to %A" inputType parameters
+                            if (parameters.Length = 0 && input'.Length = 0) || (parameters.Length > 0 && parameters = inputType) then // TODO array is also wack for multiple args
+                                Some method
+                            else
+                                None
+                        | _ -> None // TODO support classes/modules
+                    ) members
+                let bestMethod =
+                    if validMethods.Length > 0 then
+                        validMethods.[0] // TODO make better decisions
+                    else
+                        invalidArg "code" (sprintf "No match found in dotnet member %A with input type %A" members inputType)
+                let result = bestMethod.Invoke (null, input') // TODO object methods have a "this" // TODO array is wack for multiple args
+                dotnetToLime result, env
 
             let rec evaluateExpression (env: Environment) expr : Value * Environment =
                 match expr.data with
@@ -67,6 +131,8 @@ module Interpreter =
                             result, env // TODO should function be able to affect env?
                         | ValueLibFun (itype, otype, func) -> // when itype = lhs.Type -> TODO typecheck when we have types
                             lhs |> func, env // TODO For now, assuming lib functions don't affect the environment
+                        | ValueDotnet members ->
+                            runDotnetMethod env members lhs
                         | _ ->
                             // Not a function
                             match expr.children.[1].data with
@@ -116,13 +182,29 @@ module Interpreter =
                                 | _ -> invalidArg "input" "ReadLine: bad argument type"))
                             | _ -> invalidArg func "Unknown library function"
                             , env
+                        | { data = Operation (LlamaName "System"); children = [] }, { data = Operation (LlamaName r); children = [] } ->
+                            let system = System.Reflection.Assembly.GetAssembly(System.Console.BackgroundColor.GetType ())
+                            ValueDotnet [| system.GetType ("System." + r) |], env
                         | { data = Operation moduleName; children = [] }, { data = Operation moduleMember; children = [] } ->
                             match env.Get moduleName with
                             | Some (Initialized (ValueModule moduleEnv)) ->
                                 match moduleEnv.Get moduleMember with
                                 | Some (Initialized value) -> value, env
                                 | _ -> invalidArg "code" (sprintf "%A is not a member of the module %A or has not been initialized yet" moduleMember moduleName)
-                            | _ -> invalidArg "code" (sprintf "%sModule %A does not exist or has not been initialized yet" (codePosition.ToString ()) moduleName)
+                            | _ ->
+                                invalidArg "code" (sprintf "%sModule %A does not exist or has not been initialized yet" (codePosition.ToString ()) moduleName)
+                        | recLeft, { data = Operation (LlamaName r); children = [] } ->
+                            let l, _ = evaluateExpression env recLeft
+                            match l with
+                            | ValueDotnet members ->
+                                let newMembers: System.Reflection.MemberInfo [] =
+                                    Array.collect (fun (x: System.Reflection.MemberInfo) ->
+                                        match x with
+                                        | (:? System.Type as typ) -> typ.GetMember r
+                                        | _ -> To.Do ()
+                                    ) members
+                                ValueDotnet newMembers, env
+                            | _ -> To.Do ()
                         | _ -> invalidArg "program" "Unknown lhs to dot" // TODO call functions within types
                     | LlamaOperator "$tuple" ->
                         ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env
@@ -152,6 +234,8 @@ module Interpreter =
                             interpret func (closureEnv.Put recursiveName (Initialized value))
                         | ValueLibFun (UnitType, otype, func) ->
                             Unit |> func, env // TODO assume func doesn't change env
+                        | ValueDotnet members ->
+                            runDotnetMethod env members Unit
                         | _ -> invalidArg "!" "Not given a func"
 
                     | LlamaOperator "-" ->
