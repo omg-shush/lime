@@ -22,7 +22,7 @@ module Preprocessor =
     /// <para> Recognizes string/character literals </para>
     /// <para> Interprets indentations </para>
     /// </summary>
-    let Preprocess (controls: Parameters) : PreprocessedCode =
+    let Preprocess (parameters: Parameters) : PreprocessedCode =
         let isWhitespace c =
             c = ' ' || c = '\r' || c = '\n'
 
@@ -75,14 +75,14 @@ module Preprocessor =
 
             // Check for dangling comment
             match potentialTrailingComment with
-            | BlockComment pos -> Logger.Log Error (pos.ToString () + "Block comment never closed, use `*/'") controls
+            | BlockComment pos -> Logger.Log Error (pos.ToString () + "Block comment never closed, use `*/'") parameters
             | _ -> () // OK
 
             // Check for dangling string
             match potentialTrailingString with
             | NoString -> () // OK
-            | SingleQuoteString pos -> Logger.Log Error (pos.ToString () + "Character literal never closed, use `''") controls
-            | DoubleQuoteString pos -> Logger.Log Error (pos.ToString () + "String literal never closed, use `\"'") controls
+            | SingleQuoteString pos -> Logger.Log Error (pos.ToString () + "Character literal never closed, use `''") parameters
+            | DoubleQuoteString pos -> Logger.Log Error (pos.ToString () + "String literal never closed, use `\"'") parameters
 
             output
 
@@ -119,7 +119,7 @@ module Preprocessor =
                                         unindent (((code.Push (pos, '\n')).Push (pos, '\r')).Push (pos, '\n')) reducedIndents.Tail
                                 else
                                     // Invalid indentation
-                                    Logger.Log Error (sprintf "%sInvalid indentation of %d in context of %A" (pos.ToString ()) currentIndent reducedIndents) controls
+                                    Logger.Log Error (sprintf "%sInvalid indentation of %d in context of %A" (pos.ToString ()) currentIndent reducedIndents) parameters
                                     code, reducedIndents, None
                             unindent code indents
                     | _ -> Cons (code, (pos, nextChar)), indents, None // Normal code characters
@@ -145,19 +145,35 @@ module Preprocessor =
 
             output
 
-        (controls.input
-        |> IO.File.ReadAllText).ToCharArray ()
-        |> Array.mapFold (fun (cp: CodePosition) (c: char) ->
-            let nextCp =
-                match c with // Update code position for each character
-                | '\n' -> cp.NextLine
-                | _ -> cp.NextChar
-            (cp, c), nextCp
-        ) { file = controls.input; line = 1; character = 1 }
-        |> fst
-        |> preprocessCommentsIntoWhitespace
-        |> preprocessIndentationIntoControlChars
-        |> preprocessWhitespaceIntoMinimal
-        |> Stack.makeArray
-        |> PreprocessedCode
+        let result =
+            (parameters.input
+            |> IO.File.ReadAllText).ToCharArray ()
+            |> Array.mapFold (fun (cp: CodePosition) (c: char) ->
+                let nextCp =
+                    match c with // Update code position for each character
+                    | '\n' -> cp.NextLine
+                    | _ -> cp.NextChar
+                (cp, c), nextCp
+            ) { file = parameters.input; line = 1; character = 1 }
+            |> fst
+            |> preprocessCommentsIntoWhitespace
+            |> preprocessIndentationIntoControlChars
+            |> preprocessWhitespaceIntoMinimal
+            |> Stack.makeArray
+            |> PreprocessedCode
 
+        /// Pretty prints a sequence of characters with position information,
+        /// converting escaped characters into their respective sequences
+        let seqToString (chars: PreprocessedCode) : string =
+            let chars = match chars with PreprocessedCode chars -> chars
+            Seq.fold (fun (s: string) (_: CodePosition, c: char) ->
+                s + match c with
+                    | '\t' -> "\\t"
+                    | '\r' -> "\\r"
+                    | _ -> c.ToString ()
+            ) "\n" chars
+            + "------------------"
+
+        Logger.Log Info (seqToString result) parameters
+
+        result

@@ -2,7 +2,7 @@
 
 module SyntaxAnalyzer =
 
-    let Analyze (controls: Parameters) (ParsedCode code: ParsedCode) : Llama =
+    let Analyze (parameters: Parameters) (ParsedCode code: ParsedCode) : Llama =
         // Extracts a type list from a given TypeHint parse tree
         let typFromTHint tHint =
             match tHint with
@@ -238,4 +238,8 @@ module SyntaxAnalyzer =
             RemainingAdjacent (LlamaOperator "next")
         ]
 
-        analyzeExpressions builtinOperations att
+        let result = analyzeExpressions builtinOperations att
+
+        Logger.Log Info (result.ToString ()) parameters
+
+        result

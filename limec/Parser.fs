@@ -2,7 +2,7 @@
 
 module Parser =
 
-    let Parse (controls: Parameters) (LexedCode code: LexedCode) : ParsedCode =
+    let Parse (parameters: Parameters) (LexedCode code: LexedCode) : ParsedCode =
         let cfgParser =
             [
                 Expression, [ Expression; Expression ]
@@ -42,5 +42,8 @@ module Parser =
         // Use tags to build up a parse tree
         let parseTree = cfgParser.Parse taggedCode
 
-        parseTree
-        |> ParsedCode
+        let result = ParsedCode parseTree
+
+        Logger.Log Info (result.ToString ()) parameters
+
+        result

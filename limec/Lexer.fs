@@ -4,7 +4,8 @@ open System
 
 module Lexer =
 
-    let Lex (controls: Parameters) (code: PreprocessedCode) : LexedCode =
+    let Lex (parameters: Parameters) (code: PreprocessedCode) : LexedCode =
+        let sw = System.Diagnostics.Stopwatch.StartNew ()
         let code = match code with PreprocessedCode code -> code
 
         let unzip s = Array.map fst s, Array.map snd s
@@ -100,7 +101,20 @@ module Lexer =
             else
                 [] // Stop
         
-        code
-        |> Seq.ofArray
-        |> initInfiniteFold lexNextToken
-        |> LexedCode
+        let result =
+            code
+            |> Seq.ofArray
+            |> initInfiniteFold lexNextToken
+            |> LexedCode
+
+        sw.Stop ()
+        /// Pretty prints a sequence of lexemes with position information, one per each line
+        let tokToString (lexemes: LexedCode) : string =
+            let code = match lexemes with LexedCode code -> code
+            Seq.fold (fun (s: string) (cp: CodePosition, l: Lexeme) ->
+                s + "\n" + cp.ToString () + l.ToString ()
+            ) "" code
+        Logger.Log Info (tokToString result) parameters
+        Logger.Log Info (sprintf "Finished lexing in %f ms" sw.Elapsed.TotalMilliseconds) parameters
+
+        result
