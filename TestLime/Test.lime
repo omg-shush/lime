@@ -3,7 +3,7 @@ WriteAllLines = [ subroutine ]
         unit
     else
         head, tail = in
-        head -> dotnet.WriteLine
+        head -> System.Console.WriteLine
         tail -> WriteAllLines
         
 QuoteWord = [ subroutine ] "``" + in + "''"
@@ -24,4 +24,11 @@ map = (map2, "blue", "3") -> Map.Put
 10 % 4 / 2 -> Integer.ToString -> System.Console.WriteLine
 
 System.Console.ReadLine! -> System.Console.WriteLine
+
+Beep = [ subroutine ]
+    System.Console.ReadLine!
+    System.Console.Beep!
+    Beep!
+    
+Beep!
         

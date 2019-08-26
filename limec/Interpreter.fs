@@ -161,31 +161,10 @@ module Interpreter =
                         let lhs = expr.children.[0]
                         let rhs = expr.children.[1]
                         match lhs, rhs with
-                        | { data = Operation (LlamaName "dotnet"); children = [] }, { data = Operation (LlamaName func); children = [] } ->
-                            match func with
-                            | "Write" -> ValueLibFun (StringType, UnitType, (fun (i: Value) ->
-                                match i with
-                                | ValueString string ->
-                                    System.Console.Write string
-                                    Unit
-                                | _ -> invalidArg "input" "Write: bad argument type"))
-                            | "WriteLine" -> ValueLibFun (StringType, UnitType, (fun (i: Value) ->
-                                match i with
-                                | ValueString string ->
-                                    System.Console.WriteLine string
-                                    Unit
-                                | _ -> invalidArg "input" (sprintf "WriteLine: bad argument %A" i)))
-                            | "ReadLine" -> ValueLibFun (UnitType, StringType, (fun (i: Value) ->
-                                match i with
-                                | Unit ->
-                                    ValueString (System.Console.ReadLine ())
-                                | _ -> invalidArg "input" "ReadLine: bad argument type"))
-                            | _ -> invalidArg func "Unknown library function"
-                            , env
-                        | { data = Operation (LlamaName "System"); children = [] }, { data = Operation (LlamaName r); children = [] } ->
+                        | { data = Operation (LlamaName "System"); children = [] }, { data = Operation (LlamaName r); children = [] } -> // Base case for dotnet libraries
                             let system = System.Reflection.Assembly.GetAssembly(System.Console.BackgroundColor.GetType ())
                             ValueDotnet [| system.GetType ("System." + r) |], env
-                        | { data = Operation moduleName; children = [] }, { data = Operation moduleMember; children = [] } ->
+                        | { data = Operation moduleName; children = [] }, { data = Operation moduleMember; children = [] } -> // Same-language modules
                             match env.Get moduleName with
                             | Some (Initialized (ValueModule moduleEnv)) ->
                                 match moduleEnv.Get moduleMember with
@@ -193,7 +172,7 @@ module Interpreter =
                                 | _ -> invalidArg "code" (sprintf "%A is not a member of the module %A or has not been initialized yet" moduleMember moduleName)
                             | _ ->
                                 invalidArg "code" (sprintf "%sModule %A does not exist or has not been initialized yet" (codePosition.ToString ()) moduleName)
-                        | recLeft, { data = Operation (LlamaName r); children = [] } ->
+                        | recLeft, { data = Operation (LlamaName r); children = [] } -> // Recursive case for dotnet libraries
                             let l, _ = evaluateExpression env recLeft
                             match l with
                             | ValueDotnet members ->
