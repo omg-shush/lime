@@ -212,7 +212,10 @@ module SyntaxAnalyzer =
 
             Infix (LlamaOperator "+")
 
-            Infix (LlamaOperator "/")
+            Multifix (LeftAssociative, [
+                LlamaOperator "/", [ Argument; Form (LlamaOperator "/"); Argument ]
+                LlamaOperator "%", [ Argument; Form (LlamaOperator "%"); Argument ]
+            ])
 
             Infix (LlamaOperator "%")
 

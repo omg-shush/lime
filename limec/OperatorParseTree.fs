@@ -1,11 +1,5 @@
 ﻿namespace limec
 
-// TODO implement right-associative operators!
-
-/// Defines whether an operation acts as a prefix (as in !value),
-/// postfix (as in value*), infix (as in value + value), circumfix (as in [value]), or circumliteral (as in <literal-value>)
-type OperationType = Prefix | Postfix | Infix | Circumfix | Circumliteral
-
 /// Represents an element of a custom operation form
 type OperationForm<'operation> =
     | Form of 'operation
@@ -25,6 +19,7 @@ type Operation<'operation when 'operation: equality> =
     | RemainingAdjacent of 'operation
     | Null of 'operation
     | Customfix of OperationAssociativity * 'operation * OperationForm<'operation> list
+    | Multifix of OperationAssociativity * ('operation * OperationForm<'operation> list) list
 
     member this.GetOp =
         match this with
@@ -374,6 +369,72 @@ module OperatorParseTree =
                     match associativity with
                     | LeftAssociative | NonAssociative -> parseListForCustomfixOperation workingInput
                     | RightAssociative -> parseListForCustomfixOperation workingInput |> List.rev
+
+                | Multifix (associativity, possibleOperations) ->
+                    let workingInput =
+                        match associativity with
+                        | LeftAssociative | NonAssociative -> workingInput
+                        | RightAssociative -> List.rev workingInput
+                    // Recursively reads through the workingList and substitutes each instance of the Customfix operation
+                    let rec parseListForMultifixOperation (workingList: OperatorParseTree<'alphabet, 'operation> list) : OperatorParseTree<'alphabet, 'operation> list =
+                        if (workingList.Length = 0) then // TODO stop earlier
+                            workingList // Too small to contain the custom operation
+                        else
+                            let tryMatchMultiOp (workingList: OperatorParseTree<'alphabet, 'operation> list)
+                                                (opSub: 'operation, opPattern: OperationForm<'operation> list)
+                                                : OperatorParseTree<'alphabet, 'operation> list Option * int * 'operation =
+                                let rec tryMatchRemainingOp (workingList: OperatorParseTree<'alphabet, 'operation> list)
+                                                        (remainingOp: OperationForm<'operation> list)
+                                                        : OperatorParseTree<'alphabet, 'operation> list Option * int =
+                                    if (workingList.Length < remainingOp.Length) then
+                                        None, 0 // Too small to contain the custom operation
+                                    else
+                                        match remainingOp, List.tryHead workingList with
+                                        | [], _ -> // Entire customOp has been matched successfully
+                                            match associativity with
+                                            | LeftAssociative | RightAssociative ->
+                                                Some [], 0
+                                            | NonAssociative ->
+                                                // Try to match more copies of this operation
+                                                match tryMatchRemainingOp workingList opPattern.Tail with // since operationPattern.Head is just this, no need to re-match it, TODO assuming it's an Argument (it better be)
+                                                | Some moreArgs, i -> Some moreArgs, i
+                                                | None, _ -> Some [], 0
+                                        | Form f :: opTail, Some { data = Operation o } when f = o ->
+                                            match tryMatchRemainingOp workingList.Tail opTail with // OK, this Form (aka keyword/operation) matches, keep on matching the rest of this pattern
+                                            | None, _ -> None, 0
+                                            | Some _ as children, i -> children, i + 1
+                                        | Argument :: opTail, Some _ ->
+                                            match tryMatchRemainingOp workingList.Tail opTail with // Does the rest of the custom operator match?
+                                            | Some argsTail, i -> Some (workingList.Head :: argsTail), i + 1 // If so, save this argument as part of the operator
+                                            | None, _ -> None, 0 // Otherwise, no match here
+                                        | _ -> None, 0
+
+                                let addThird (x, y) z = x, y, z
+                                addThird (tryMatchRemainingOp workingList opPattern) opSub
+                            match Seq.tryFind (fun (opt: _ Option, _, _) -> opt.IsSome) (Seq.map (tryMatchMultiOp workingList) possibleOperations) with
+                            | Some (Some children, subtreesMatched, opSub) ->
+                                // Construct subtree with this operation at the root
+                                let parsedSubtree =
+                                    {
+                                        // Insert custom operation data
+                                        data = Operation opSub;
+                                        // Add left and right subtrees as children of this operation
+                                        children =
+                                            match associativity with
+                                            | LeftAssociative | NonAssociative -> children
+                                            | RightAssociative -> List.rev children
+                                        size = List.fold (fun sum c -> sum + c.size) (subtreesMatched - children.Length) children; // Calculate # raw elements consumed, accounting for Forms and children
+                                    }
+                                // parsedSubtree is cons'd on BEFORE re-parsing, so that chains eg. if-else if-else or (_, (_, _)) can work
+                                //printfn "subtreesMatched: %d of %A" subtreesMatched nextOperation
+                                parseListForMultifixOperation (parsedSubtree :: (List.skip subtreesMatched workingList))
+                            | _ ->
+                                // No match here, try to move on
+                                workingList.Head :: parseListForMultifixOperation workingList.Tail
+
+                    match associativity with
+                    | LeftAssociative | NonAssociative -> parseListForMultifixOperation workingInput
+                    | RightAssociative -> parseListForMultifixOperation workingInput |> List.rev
 
         ) atomizedInput opPriority
 
