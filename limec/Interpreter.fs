@@ -52,7 +52,9 @@ module Interpreter =
                     | ValueDouble d -> d :> obj
                     | ValueBool b -> b :> obj
                     | ValueClosure _ -> To.Do () // TODO transform into lambdas... somehow???
-                    | ValueLibFun _ -> To.Do () // heck
+                    | ValueLibFun _ ->
+                        //eprintfn "%O%A; %A" codePosition input members
+                        To.Do () // heck
                     | ValueTuple (size, xs) ->
                         let listToTuple (l: Value list) =
                             let l' = List.toArray l |> Array.map (fun v -> v :> obj)
@@ -145,10 +147,12 @@ module Interpreter =
                             | ValueTuple (2, [ ValueInt i; ValueTuple (n, t) ]) when (int i) <= n -> List.item ((int i) - 1) t
                             | _ -> invalidArg "input" (sprintf "%snth expected a tuple (index, tuple)" (codePosition.ToString ()))
                         )), env
-                    | LlamaName "first" ->
-                        ValueLibFun (TupleType 2, UnitType, (fun (i: Value) -> match i with | ValueTuple (2, [ v; _ ]) -> v | _ -> invalidArg "input" "first: bad argument type")), env
-                    | LlamaName "second" ->
-                        ValueLibFun (TupleType 2, UnitType, (fun (i: Value) -> match i with | ValueTuple (2, [ _; v ]) -> v | _ -> invalidArg "input" "second: bad argument type")), env
+                    | LlamaName "strchars" ->
+                        ValueLibFun (StringType, TupleType -1, (fun (v: Value) ->
+                            match v with
+                            | ValueString str -> str |> Seq.rev |> Seq.fold (fun list c -> ValueTuple (2, [ ValueChar c; list ])) Unit
+                            | _ -> invalidArg "input" (sprintf "%Ostrchars expected a string" codePosition);
+                        )), env
                     | LlamaName "unit" -> Value.Unit, env
                     | LlamaOperator "+" ->
                         let (lhs, _), (rhs, _) = evaluateExpression env expr.children.[0], evaluateExpression env expr.children.[1]
@@ -162,8 +166,12 @@ module Interpreter =
                         let rhs = expr.children.[1]
                         match lhs, rhs with
                         | { data = Operation (LlamaName "System"); children = [] }, { data = Operation (LlamaName r); children = [] } -> // Base case for dotnet libraries
-                            let system = System.Reflection.Assembly.GetAssembly(System.Console.BackgroundColor.GetType ())
-                            ValueDotnet [| system.GetType ("System." + r) |], env
+                            let dlls =
+                                [|
+                                    System.Reflection.Assembly.GetAssembly(typeof<System.Console>);
+                                    System.Reflection.Assembly.GetAssembly(typeof<System.Char>)
+                                |]
+                            ValueDotnet (Array.map (fun (x: System.Reflection.Assembly) -> (x.GetType ("System." + r)) :> System.Reflection.MemberInfo) dlls), env
                         | { data = Operation moduleName; children = [] }, { data = Operation moduleMember; children = [] } -> // Same-language modules
                             match env.Get moduleName with
                             | Some (Initialized (ValueModule moduleEnv)) ->
@@ -180,10 +188,14 @@ module Interpreter =
                                     Array.collect (fun (x: System.Reflection.MemberInfo) ->
                                         match x with
                                         | (:? System.Type as typ) -> typ.GetMember r
-                                        | _ -> To.Do ()
+                                        | _ -> 
+                                            //eprintfn "%O, %s, %O" x r (System.Reflection.Assembly.GetAssembly(typeof<System.Char>))
+                                            [||]
                                     ) members
                                 ValueDotnet newMembers, env
-                            | _ -> To.Do ()
+                            | _ ->
+                                eprintfn "%s" r
+                                To.Do ()
                         | _ -> invalidArg "program" "Unknown lhs to dot" // TODO call functions within types
                     | LlamaOperator "$tuple" ->
                         ValueTuple (expr.children.Length, List.map (evaluateExpression env >> fst) expr.children), env
@@ -215,7 +227,7 @@ module Interpreter =
                             Unit |> func, env // TODO assume func doesn't change env
                         | ValueDotnet members ->
                             runDotnetMethod env members Unit
-                        | _ -> invalidArg "!" "Not given a func"
+                        | _ -> invalidArg "!" (sprintf "%ONot given a func" codePosition)
 
                     | LlamaOperator "-" ->
                         let value, _ = evaluateExpression env expr.children.[0]

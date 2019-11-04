@@ -1,0 +1,52 @@
+List = [ module ]
+    Append = [ subroutine ]
+        left, right = in
+        if left == unit then
+            right
+        else
+            leftHead, leftTail = left
+            (leftHead, (leftTail, right) -> Append)
+
+    Filter = [ subroutine ]
+        (predicate, list) = in
+        if list == unit then
+            unit
+        else
+            head, tail = list
+            if head -> predicate then
+                head, ((predicate, tail) -> Filter)
+            else
+                (predicate, tail) -> Filter
+
+    Map = [ subroutine ]
+        mapper, list = in
+        if list == unit then
+            unit
+        else
+            head, tail = list
+            (head -> mapper), (mapper, tail) -> Map
+            
+    Iter = [ subroutine ]
+        in -> Map
+        unit
+        
+    Rev = [ subroutine ]
+        rev = [ subroutine ]
+            input, acc = in
+            if input == unit then
+                acc
+            else
+                inHead, inTail = input
+                (inTail, (inHead, acc)) -> rev
+        (in, unit) -> rev
+        
+    Naturals = [ subroutine ]
+        natsDescending = [ subroutine ]
+            if in == 0 then
+                unit
+            else
+                in, (in + -1) -> natsDescending
+        if in < 0 then
+            "ERROR: Naturals given negative count!" -> System.Console.WriteLine
+        else
+            in -> natsDescending -> Rev

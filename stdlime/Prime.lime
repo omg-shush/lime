@@ -1,0 +1,33 @@
+IsPrime = [ subroutine ]
+    if in < 2 then
+        Bool.false
+    else if in == 2 then
+        Bool.true
+    else
+        num = in
+        helper = [ subroutine ]
+            possibleFactor = in
+            if num % possibleFactor == 0 then
+                Bool.false
+            else if possibleFactor == num / 2 then
+                Bool.true
+            else
+                (possibleFactor + 1) -> helper
+        2 -> helper
+
+PrimesWithinN = [ subroutine ]
+    (IsPrime, in -> List.Naturals) -> List.Filter
+
+IntListToString = [ subroutine ]
+    if in == unit then
+        "[]"
+    else
+        helper = [ subroutine ]
+            (head, tail) = in
+            if tail == unit then
+                head -> Integer.ToString
+            else
+                (head -> Integer.ToString) + "; " + (tail -> helper)
+        "[ " + (in -> helper) + " ]"
+
+// 10 -> PrimesWithinN -> IntListToString -> System.Console.WriteLine

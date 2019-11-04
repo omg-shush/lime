@@ -1,0 +1,17 @@
+WriteAllLines = [ subroutine ]
+    if in == unit then
+        unit
+    else
+        head, tail = in
+        head -> System.Console.WriteLine
+        tail -> WriteAllLines
+        
+str = "hello world!"
+str -> strchars -> WriteAllLines
+
+x = "hi"
+if x == "no" then
+    x = "no"
+    x -> System.Console.WriteLine
+else
+    unit

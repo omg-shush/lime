@@ -1,0 +1,15 @@
+Integer = [ module ]
+    ToString = [ subroutine ]
+        digitToString = [ subroutine ]
+            if in == 0 then "0" else if in == 1 then "1" else if in == 2 then "2" else if in == 3 then "3"
+            else if in == 4 then "4" else if in == 5 then "5" else if in == 6 then "6" else if in == 7 then "7"
+            else if in == 8 then "8" else if in == 9 then "9" else "ERROR: digitToString given a non-digit" -> System.Console.WriteLine
+        if in < 0 then
+            "-" + ((-in) -> ToString)
+        else if in > 9 then
+            onesDigit = in % 10
+            restDigits = in / 10
+            (restDigits -> ToString) + (onesDigit -> digitToString)
+        else
+            in -> digitToString
+        
