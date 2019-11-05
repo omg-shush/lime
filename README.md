@@ -1,6 +1,6 @@
 # Lime
 
-** A functional, dynamically-typed language loosely inspired by Lisp and F#. **
+### A functional, dynamically-typed language loosely inspired by Lisp and F#.
 
 ## The Basics
 
