@@ -177,7 +177,7 @@ module Interpreter =
                             | Some (Initialized (ValueModule moduleEnv)) ->
                                 match moduleEnv.Get moduleMember with
                                 | Some (Initialized value) -> value, env
-                                | _ -> invalidArg "code" (sprintf "%A is not a member of the module %A or has not been initialized yet" moduleMember moduleName)
+                                | _ -> invalidArg "code" (sprintf "%O%A is not a member of the module %A or has not been initialized yet" codePosition moduleMember moduleName)
                             | _ ->
                                 invalidArg "code" (sprintf "%sModule %A does not exist or has not been initialized yet" (codePosition.ToString ()) moduleName)
                         | recLeft, { data = Operation (LlamaName r); children = [] } -> // Recursive case for dotnet libraries

@@ -1,4 +1,6 @@
 List = [ module ]
+    Empty = unit
+
     Append = [ subroutine ]
         left, right = in
         if left == unit then
